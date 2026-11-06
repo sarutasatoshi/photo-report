@@ -8,8 +8,6 @@
 <meta name="apple-mobile-web-app-title" content="写真報告書">
 <meta name="theme-color" content="#1f3b4d">
 <title>写真報告書</title>
-<!-- ExcelJS 4.4.0（同梱版。SHA-256: 7E49DA68588E250DBB8BBA190D2CAA8AB3787CC0284BDA1D8B2F805C4DF742C9） -->
-<script src="exceljs.min.js" defer></script>
 <style>
   :root { --main:#1f3b4d; --accent:#2f7d5b; --bg:#f2f4f6; --line:#d5dbe1; --text:#1d2329; }
   * { box-sizing: border-box; }
@@ -458,72 +456,196 @@ function descLines(p) {
   while (ls.length < DESC_LINES) ls.push('');
   return ls;
 }
+/* ---- xlsx（zip）を自前で組み立てる。Excel本体と同じ形式で写真を埋め込み、
+        iPhoneの「ファイル」アプリのプレビューやNumbersでも写真が見えるようにする ---- */
+const xmlEsc = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const enc = new TextEncoder();
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+  const parts = [], central = []; let offset = 0;
+  const d = new Date();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dosTime, true); h.setUint16(12, dosDate, true); h.setUint32(14, crc, true);
+    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dosTime, true); c.setUint16(14, dosDate, true); c.setUint32(16, crc, true);
+    c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true);
+    c.setUint32(42, offset, true);
+    central.push(c.buffer, name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((a, b) => a + b.byteLength, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, cdSize, true); e.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, e.buffer], { type: XLSX_MIME });
+}
+function makeStyles() {
+  const fonts = ['<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'];
+  const borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>'];
+  const xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'];
+  const idx = (arr, x) => { let i = arr.indexOf(x); if (i < 0) { arr.push(x); i = arr.length - 1; } return i; };
+  const side = (tag, s) => s ? `<${tag} style="${s}"><color rgb="FF808080"/></${tag}>` : `<${tag}/>`;
+  return {
+    xf({ font, border = {}, numFmt = 0, h, wrap, shrink }) {
+      const fi = font ? idx(fonts, `<font><sz val="${font}"/><name val="ＭＳ Ｐゴシック"/><family val="3"/><charset val="128"/></font>`) : 0;
+      const bi = idx(borders, `<border>${side('left', border.l)}${side('right', border.r)}${side('top', border.t)}${side('bottom', border.b)}<diagonal/></border>`);
+      const al = `<alignment${h ? ` horizontal="${h}"` : ''} vertical="center"${wrap ? ' wrapText="1"' : ''}${shrink ? ' shrinkToFit="1"' : ''}/>`;
+      return idx(xfs, `<xf numFmtId="${numFmt}" fontId="${fi}" fillId="0" borderId="${bi}" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1">${al}</xf>`);
+    },
+    xml() {
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+        '<numFmts count="1"><numFmt numFmtId="176" formatCode="yyyy&quot;年&quot;m&quot;月&quot;d&quot;日&quot;"/></numFmts>' +
+        `<fonts count="${fonts.length}">${fonts.join('')}</fonts>` +
+        '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+        `<borders count="${borders.length}">${borders.join('')}</borders>` +
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        `<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs>` +
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    },
+  };
+}
 async function buildXlsx() {
-  if (!window.ExcelJS) throw new Error('Excel出力の部品（exceljs.min.js）を読み込めていません。アプリを開き直してください。');
-  const wb = new ExcelJS.Workbook(); wb.creator = '写真報告書アプリ'; wb.created = new Date();
-  const gray = { argb: 'FF808080' };
-  const thin = { style: 'thin', color: gray }, hair = { style: 'hair', color: gray }, dashed = { style: 'dashed', color: gray };
-  const COL_PX = 187.5, BOX_W = COL_PX * 3;                // B〜D列（幅25）×3 ※Excel実測値
-  const ROW_PX = [75, 42, 42, 42, 42, 42, 42, 42, 42, 42]; // 56.25pt + 31.5pt×9
-  const BOX_H = ROW_PX.reduce((a, b) => a + b, 0);
+  const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const NSR = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const EMU = px => Math.round(px * 9525);
+  // シートの寸法（px）。Excelでの実測値に合わせている
+  const COLS = [[1, 2.6], [2, 25], [3, 25], [4, 25], [5, 2.13], [6, 33.86], [7, 1.86], [8, 3.73]];
+  const COL_PX = [19.5, 187.5, 187.5, 187.5, 16, 254, 14, 28, 72, 72];
+  const BLOCK_ROWS = [56.25, 31.5, 31.5, 31.5, 31.5, 31.5, 31.5, 31.5, 31.5, 31.5];
+  const ROW_PT = [13.5]; for (let b = 0; b < PER_PAGE; b++) { ROW_PT.push(...BLOCK_ROWS); if (b < PER_PAGE - 1) ROW_PT.push(12); }
+  const ROW_PX = ROW_PT.map(pt => pt * 4 / 3);
+  const BOX_W = 187.5 * 3, BOX_H = BLOCK_ROWS.reduce((a, b) => a + b, 0) * 4 / 3;
+  const locate = (arr, pos) => { let i = 0; while (i < arr.length - 1 && pos >= arr[i]) { pos -= arr[i]; i++; } return { i, off: pos }; };
+  const sumTo = (arr, n) => arr.slice(0, n).reduce((a, b) => a + b, 0);
+
+  const st = makeStyles();
+  const S = {
+    title: st.xf({ font: 16, h: 'center', wrap: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
+    date: st.xf({ font: 14, numFmt: 176, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'hair' } }),
+    line: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'hair', b: 'hair' } }),
+    last: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'hair', b: 'thin' } }),
+  };
+  const frameXf = (r, c, top) => st.xf({ border: {
+    t: r === top ? 'dashed' : null, b: r === top + 9 ? 'dashed' : null,
+    l: c === 2 ? 'dashed' : null, r: c === 4 ? 'dashed' : null } });
+  const sst = [], sstMap = new Map();
+  const sIdx = s => { if (!sstMap.has(s)) { sstMap.set(s, sst.length); sst.push(s); } return sstMap.get(s); };
   const [yy, mm, dd] = (meta.date || todayStr()).split('-').map(Number);
+  const dateSerial = (Date.UTC(yy, mm - 1, dd) - Date.UTC(1899, 11, 30)) / 86400000;
+  const L = { 2: 'B', 3: 'C', 4: 'D', 6: 'F' };
+
+  const files = [], media = [], sheetNames = [];
   const pages = chunk(photos, PER_PAGE);
+  let imgNo = 0;
   for (let pi = 0; pi < pages.length; pi++) {
-    const ws = wb.addWorksheet(pad2(pi + 1), {
-      views: [{ showGridLines: false }],
-      pageSetup: { paperSize: 9, orientation: 'portrait', scale: 75, printArea: 'B2:F33',
-                   margins: { left: 0.787, right: 0.394, top: 0.394, bottom: 0.394, header: 0.512, footer: 0.512 } },
-    });
-    [[1, 2.6], [2, 25], [3, 25], [4, 25], [5, 2.13], [6, 33.86], [7, 1.86], [8, 3.73]].forEach(([c, w]) => { ws.getColumn(c).width = w; });
-    ws.getRow(1).height = 13.5;
+    const name = pad2(pi + 1); sheetNames.push(name);
+    const rows = new Map(); // 行番号 → セルXML（列順）
+    const put = (r, c, s, v) => {
+      if (!rows.has(r)) rows.set(r, []);
+      const ref = L[c] + r;
+      let x;
+      if (v == null || v === '') x = `<c r="${ref}" s="${s}"/>`;
+      else if (typeof v === 'number') x = `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+      else x = `<c r="${ref}" s="${s}" t="s"><v>${sIdx(v)}</v></c>`;
+      rows.get(r).push(x);
+    };
+    const anchors = [], drawRels = [];
     for (let b = 0; b < PER_PAGE; b++) {
       const top = 2 + b * 11, p = pages[pi][b];
-      ws.getRow(top).height = 56.25;
-      for (let r = top + 1; r <= top + 9; r++) ws.getRow(r).height = 31.5;
-      if (b < PER_PAGE - 1) ws.getRow(top + 10).height = 12;
-      // 写真枠（結合＋点線）
-      ws.mergeCells(top, 2, top + 9, 4);
-      for (let r = top; r <= top + 9; r++) for (let c = 2; c <= 4; c++) {
-        const bd = {};
-        if (r === top) bd.top = dashed; if (r === top + 9) bd.bottom = dashed;
-        if (c === 2) bd.left = dashed; if (c === 4) bd.right = dashed;
-        ws.getCell(r, c).style = { border: bd };
-      }
-      // 右側の文字欄
-      const F = r => ws.getCell(r, 6);
-      F(top).value = p ? meta.title : null;
-      F(top).style = { font: { name: 'ＭＳ Ｐゴシック', size: 16 }, alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
-                       border: { top: thin, left: thin, right: thin, bottom: thin } };
-      F(top + 1).value = p && meta.date ? new Date(Date.UTC(yy, mm - 1, dd)) : null;
-      F(top + 1).style = { numFmt: 'yyyy"年"m"月"d"日"', font: { name: 'ＭＳ Ｐゴシック', size: 14 },
-                           alignment: { horizontal: 'center', vertical: 'middle', shrinkToFit: true },
-                           border: { top: thin, left: thin, right: thin, bottom: hair } };
       const lines = p ? [p.loc || '', ...descLines(p)] : Array(DESC_LINES + 1).fill('');
-      lines.forEach((t, i) => {
-        const r = top + 2 + i;
-        F(r).value = t || null;
-        F(r).style = { font: { name: 'ＭＳ Ｐゴシック', size: 12 }, alignment: { horizontal: 'center', vertical: 'middle', shrinkToFit: true },
-                       border: { left: thin, right: thin, top: hair, bottom: r === top + 9 ? thin : hair } };
-      });
-      // 写真（枠の中央に収める）
-      if (p) {
-        const cv = await compose(p, 1600);
-        const id = wb.addImage({ base64: cv.toDataURL('image/jpeg', 0.85), extension: 'jpeg' });
-        const k = Math.min((BOX_W - 16) / cv.width, (BOX_H - 16) / cv.height);
-        const w = Math.round(cv.width * k), h = Math.round(cv.height * k);
-        const offX = (BOX_W - w) / 2, offY = (BOX_H - h) / 2;
-        const ci = Math.floor(offX / COL_PX);
-        let ri = 0, acc = 0; while (ri < 9 && acc + ROW_PX[ri] <= offY) { acc += ROW_PX[ri]; ri++; }
-        ws.addImage(id, {
-          tl: { nativeCol: 1 + ci, nativeColOff: Math.round((offX - ci * COL_PX) * 9525),
-                nativeRow: top - 1 + ri, nativeRowOff: Math.round((offY - acc) * 9525) },
-          ext: { width: w, height: h }, editAs: 'oneCell',
-        });
+      for (let r = top; r <= top + 9; r++) {
+        for (let c = 2; c <= 4; c++) put(r, c, frameXf(r, c, top), null);
+        if (r === top) put(r, 6, S.title, p ? meta.title : null);
+        else if (r === top + 1) put(r, 6, S.date, p && meta.date ? dateSerial : null);
+        else put(r, 6, r === top + 9 ? S.last : S.line, lines[r - top - 2]);
       }
+      if (!p) continue;
+      // 写真：枠の中央に収め、Excelと同じ twoCellAnchor 形式で配置
+      const cv = await compose(p, 1600);
+      const bytes = new Uint8Array(await (await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85))).arrayBuffer());
+      imgNo++; media.push({ name: `xl/media/image${imgNo}.jpeg`, data: bytes });
+      const k = Math.min((BOX_W - 16) / cv.width, (BOX_H - 16) / cv.height);
+      const w = Math.round(cv.width * k), h = Math.round(cv.height * k);
+      const x = COL_PX[0] + (BOX_W - w) / 2, y = sumTo(ROW_PX, top - 1) + (BOX_H - h) / 2;
+      const f1 = locate(COL_PX, x), f2 = locate(COL_PX, x + w), r1 = locate(ROW_PX, y), r2 = locate(ROW_PX, y + h);
+      const rid = `rId${drawRels.length + 1}`, n = anchors.length + 1;
+      drawRels.push(`<Relationship Id="${rid}" Type="${NSR}/image" Target="../media/image${imgNo}.jpeg"/>`);
+      anchors.push(
+        '<xdr:twoCellAnchor editAs="oneCell">' +
+        `<xdr:from><xdr:col>${f1.i}</xdr:col><xdr:colOff>${EMU(f1.off)}</xdr:colOff><xdr:row>${r1.i}</xdr:row><xdr:rowOff>${EMU(r1.off)}</xdr:rowOff></xdr:from>` +
+        `<xdr:to><xdr:col>${f2.i}</xdr:col><xdr:colOff>${EMU(f2.off)}</xdr:colOff><xdr:row>${r2.i}</xdr:row><xdr:rowOff>${EMU(r2.off)}</xdr:rowOff></xdr:to>` +
+        `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${n + 1}" name="図 ${n}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>` +
+        `<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
+        `<xdr:spPr><a:xfrm><a:off x="${EMU(x)}" y="${EMU(y)}"/><a:ext cx="${EMU(w)}" cy="${EMU(h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>` +
+        '</xdr:pic><xdr:clientData/></xdr:twoCellAnchor>');
+    }
+    let rowsXml = `<row r="1" ht="13.5" customHeight="1"/>`;
+    for (let r = 2; r <= 33; r++) {
+      rowsXml += `<row r="${r}" ht="${ROW_PT[r - 1]}" customHeight="1">${(rows.get(r) || []).join('')}</row>`;
+    }
+    const sn = pi + 1;
+    files.push({ name: `xl/worksheets/sheet${sn}.xml`, data: HEAD +
+      `<worksheet xmlns="${NS}" xmlns:r="${NSR}"><dimension ref="B2:F33"/>` +
+      `<sheetViews><sheetView showGridLines="0"${pi === 0 ? ' tabSelected="1"' : ''} workbookViewId="0"/></sheetViews>` +
+      '<sheetFormatPr defaultRowHeight="13.5"/>' +
+      `<cols>${COLS.map(([c, w]) => `<col min="${c}" max="${c}" width="${w}" customWidth="1"/>`).join('')}</cols>` +
+      `<sheetData>${rowsXml}</sheetData>` +
+      `<mergeCells count="${PER_PAGE}">${Array.from({ length: PER_PAGE }, (_, b) => `<mergeCell ref="B${2 + b * 11}:D${11 + b * 11}"/>`).join('')}</mergeCells>` +
+      '<pageMargins left="0.787" right="0.394" top="0.394" bottom="0.394" header="0.512" footer="0.512"/>' +
+      '<pageSetup paperSize="9" scale="75" orientation="portrait"/>' +
+      (anchors.length ? '<drawing r:id="rId1"/>' : '') + '</worksheet>' });
+    if (anchors.length) {
+      files.push({ name: `xl/worksheets/_rels/sheet${sn}.xml.rels`, data: HEAD +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${NSR}/drawing" Target="../drawings/drawing${sn}.xml"/></Relationships>` });
+      files.push({ name: `xl/drawings/drawing${sn}.xml`, data: HEAD +
+        `<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${NSR}">${anchors.join('')}</xdr:wsDr>` });
+      files.push({ name: `xl/drawings/_rels/drawing${sn}.xml.rels`, data: HEAD +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${drawRels.join('')}</Relationships>` });
     }
   }
-  const buf = await wb.xlsx.writeBuffer();
-  return new Blob([buf], { type: XLSX_MIME });
+  const n = sheetNames.length;
+  const hasDrawing = i => files.some(f => f.name === `xl/drawings/drawing${i}.xml`);
+  const head = [
+    { name: '[Content_Types].xml', data: HEAD +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      sheetNames.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+        (hasDrawing(i + 1) ? `<Override PartName="/xl/drawings/drawing${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>` : '')).join('') +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' +
+      '</Types>' },
+    { name: '_rels/.rels', data: HEAD +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${NSR}/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+    { name: 'xl/workbook.xml', data: HEAD +
+      `<workbook xmlns="${NS}" xmlns:r="${NSR}"><bookViews><workbookView/></bookViews><sheets>` +
+      sheetNames.map((s, i) => `<sheet name="${s}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets><definedNames>' +
+      sheetNames.map((s, i) => `<definedName name="_xlnm.Print_Area" localSheetId="${i}">'${s}'!$B$2:$F$33</definedName>`).join('') +
+      '</definedNames></workbook>' },
+    { name: 'xl/_rels/workbook.xml.rels', data: HEAD +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      sheetNames.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${NSR}/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') +
+      `<Relationship Id="rId${n + 1}" Type="${NSR}/styles" Target="styles.xml"/>` +
+      `<Relationship Id="rId${n + 2}" Type="${NSR}/sharedStrings" Target="sharedStrings.xml"/></Relationships>` },
+    { name: 'xl/styles.xml', data: st.xml() },
+    { name: 'xl/sharedStrings.xml', data: HEAD +
+      `<sst xmlns="${NS}" count="${sst.length}" uniqueCount="${sst.length}">` +
+      sst.map(s => `<si><t xml:space="preserve">${xmlEsc(s)}</t></si>`).join('') + '</sst>' },
+  ];
+  return zipStore([...head, ...files, ...media]);
 }
 window.buildXlsx = buildXlsx; // 動作確認用
 

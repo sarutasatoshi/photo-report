@@ -9,61 +9,60 @@
 <meta name="theme-color" content="#1f3b4d">
 <title>写真報告書</title>
 <style>
-  :root { --main:#1f3b4d; --accent:#2f7d5b; --bg:#f2f4f6; --line:#d5dbe1; --text:#1d2329; }
+  :root { --main:#1f3b4d; --accent:#2f7d5b; --bg:#e9edf0; --line:#d5dbe1; --text:#1d2329; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--text);
          font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",sans-serif;
          -webkit-text-size-adjust:100%; }
   header { position:sticky; top:0; z-index:5; background:var(--main); color:#fff;
-           padding:calc(env(safe-area-inset-top) + 10px) 14px 10px; display:flex; align-items:center; gap:10px; }
+           padding:calc(env(safe-area-inset-top) + 10px) 12px 10px; display:flex; align-items:center; gap:10px; }
   header h1 { font-size:18px; margin:0; flex:1; }
   header .count { font-size:13px; opacity:.85; }
-  header button { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:8px; padding:6px 10px; font-size:13px; }
-  main { max-width:720px; margin:0 auto; padding:12px 12px 120px; }
-  section, details { background:#fff; border-radius:12px; padding:12px 14px; margin-bottom:12px; box-shadow:0 1px 2px rgba(0,0,0,.06); }
-  details summary { font-weight:600; cursor:pointer; padding:2px 0; }
-  h2 { font-size:15px; margin:0 0 8px; }
-  label { display:block; font-size:12px; color:#56616b; margin-top:8px; }
+  header button { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.6); border-radius:8px; padding:7px 12px; font-size:14px; font-weight:600; }
+  main { max-width:780px; margin:0 auto; padding:8px 10px 110px; }
+  .guide { font-size:12.5px; color:#4a5560; text-align:center; margin:2px 0 8px; line-height:1.5; }
+  .pcap { font-size:13px; font-weight:700; color:#4a5560; margin:14px 2px 5px; }
+  .pcap .sub { font-weight:400; color:#7a858f; }
+  .sheet { background:#fff; padding:calc(var(--u) * 6); box-shadow:0 1px 4px rgba(0,0,0,.18); width:calc(var(--u) * 192); }
+
+  label { display:block; font-size:12px; color:#56616b; margin-top:10px; }
   input[type=text], input[type=date], textarea { display:block; width:100%; margin-top:3px; font-size:16px; padding:9px 10px;
          border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--text); font-family:inherit; }
-  textarea { resize:vertical; line-height:1.5; }
+  textarea { resize:vertical; line-height:1.6; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 10px; }
   .chk { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text); }
   .chk input { width:20px; height:20px; }
-  .note-s { font-size:11px; color:#7a858f; margin:6px 0 0; }
-
-  .card { background:#fff; border-radius:12px; padding:10px 12px 12px; margin-bottom:12px; box-shadow:0 1px 2px rgba(0,0,0,.06); }
-  .card-head { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-  .card-head .num { font-weight:700; font-size:15px; }
-  .card-head .pg { font-size:12px; color:#7a858f; }
-  .card-head .spacer { flex:1; }
-  .ic { width:38px; height:34px; border:1px solid var(--line); background:#fff; border-radius:8px; font-size:16px; color:var(--text); }
-  .ic.del { color:#c0392b; }
-  .thumb { position:relative; background:#e6e9ec; border-radius:8px; overflow:hidden; text-align:center; min-height:120px; cursor:pointer; }
-  .thumb img { display:block; width:100%; height:auto; }
-  .thumb .hint { position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; padding:3px 7px; border-radius:6px; }
+  .note-s { font-size:11.5px; color:#7a858f; margin:6px 0 0; line-height:1.5; }
   .chips { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
-  .chips button { border:1px solid var(--line); background:#f7f9fa; border-radius:16px; padding:5px 12px; font-size:13px; color:var(--text); }
-  .empty { text-align:center; color:#7a858f; padding:40px 10px; font-size:14px; line-height:1.8; }
+  .chips button { border:1px solid var(--line); background:#f7f9fa; border-radius:16px; padding:6px 13px; font-size:13px; color:var(--text); }
 
-  .bar { position:fixed; left:0; right:0; bottom:0; z-index:6; background:#fff; border-top:1px solid var(--line);
-         padding:10px 12px calc(env(safe-area-inset-bottom) + 10px); display:flex; gap:8px; justify-content:center; }
-  .bar button { flex:1; max-width:220px; font-size:15px; padding:12px 6px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--text); font-weight:600; }
-  .bar .cam { background:var(--accent); color:#fff; border-color:var(--accent); flex:1.4; }
+  .fab { position:fixed; right:16px; bottom:calc(env(safe-area-inset-bottom) + 18px); z-index:6; border:none; border-radius:30px;
+         background:var(--accent); color:#fff; font-size:15px; font-weight:700; padding:14px 18px; box-shadow:0 3px 10px rgba(0,0,0,.3); }
   .primary { background:var(--main) !important; color:#fff !important; border-color:var(--main) !important; }
 
   .modal { position:fixed; inset:0; z-index:20; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:12px; }
   .modal[hidden] { display:none; }
-  .modal-body { background:#fff; border-radius:14px; padding:12px; width:100%; max-width:900px; max-height:100%; overflow:auto; }
+  .modal.full { align-items:flex-start; padding:calc(env(safe-area-inset-top) + 8px) 8px 8px; }
+  .modal-body { background:#fff; border-radius:14px; padding:12px 14px; width:100%; max-width:900px; max-height:100%; overflow:auto; }
   .modal-body.small { max-width:420px; }
+  .modal-body.form { max-width:560px; padding-bottom:calc(env(safe-area-inset-bottom) + 14px); }
   .modal-body h3 { margin:4px 0 8px; font-size:17px; }
   .modal-body p { font-size:14px; line-height:1.6; margin:0 0 12px; word-break:break-all; }
+  .modal-body section { border-top:1px solid var(--line); padding:10px 0 12px; }
+  .modal-body section h2 { font-size:15px; margin:0 0 6px; }
+  .mhead { display:flex; align-items:center; gap:8px; position:sticky; top:-12px; background:#fff; padding:6px 0; z-index:1; }
+  .mhead h3 { flex:1; text-align:center; margin:0; }
+  .mhead .btn { padding:8px 12px; }
+  .cthumb { text-align:center; margin:6px 0 2px; }
+  .cthumb img { max-width:100%; max-height:26vh; border-radius:8px; }
   #edCanvas { display:block; width:100%; height:auto; max-height:65vh; object-fit:contain; touch-action:none; background:#222; border-radius:8px; }
   .ed-ctl { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:10px; }
   .ed-ctl label { margin:0; display:flex; align-items:center; gap:6px; font-size:14px; color:var(--text); }
   .ed-ctl input[type=range] { width:150px; }
   .ed-ctl .sp { flex:1; }
   .btn { font-size:15px; padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--text); }
+  .btn.danger { color:#c0392b; }
+  .btn.wide { display:block; width:100%; margin-top:12px; }
   .row { display:flex; gap:8px; flex-wrap:wrap; }
   .row .btn { flex:1; }
   .menu button { display:block; width:100%; text-align:left; margin-bottom:8px; }
@@ -72,23 +71,34 @@
            border-radius:10px; font-size:14px; z-index:30; max-width:90vw; display:none; }
   #busy { position:fixed; inset:0; z-index:40; background:rgba(255,255,255,.7); display:none; align-items:center; justify-content:center; font-size:16px; font-weight:600; }
 
-  /* ===== 印刷（PDF）用レイアウト：Excelの報告書と同じ並び ===== */
+  /* ===== 報告書のページ（画面表示とPDFで共通）。--u は 1mm に相当する長さ ===== */
+  .page { width:calc(var(--u) * 180); height:calc(var(--u) * 276); display:flex; flex-direction:column; gap:calc(var(--u) * 3); background:#fff; overflow:hidden; }
+  .blk { display:flex; gap:calc(var(--u) * 2.5); height:calc(var(--u) * 88); }
+  .ph { position:relative; width:calc(var(--u) * 122); height:calc(var(--u) * 88); border:max(0.5px, calc(var(--u) * 0.3)) dashed #888;
+        display:flex; align-items:center; justify-content:center; }
+  .ph img { max-width:calc(100% - var(--u) * 3); max-height:calc(100% - var(--u) * 3); }
+  .tx { position:relative; flex:1; height:calc(var(--u) * 88); display:grid; grid-template-rows:1.79fr repeat(9, 1fr);
+        border:max(0.5px, calc(var(--u) * 0.35)) solid #555; }
+  .tx div { display:flex; align-items:center; justify-content:center; text-align:center; overflow:hidden; white-space:nowrap; min-width:0;
+            border-top:max(0.5px, calc(var(--u) * 0.25)) solid #808080; color:#000;
+            font-family:"Hiragino Kaku Gothic ProN","MS PGothic","Yu Gothic",sans-serif; font-size:calc(var(--u) * 3.2); padding:0 calc(var(--u) * 1); }
+  .tx .t1 { font-size:calc(var(--u) * 4.2); white-space:normal; border-top:none; line-height:1.25; }
+  .tx .t2 { font-size:calc(var(--u) * 3.7); border-top:max(0.5px, calc(var(--u) * 0.35)) solid #555; }
+  .tx .faint { color:#a0a8b0; }
+  .tap { cursor:pointer; -webkit-tap-highlight-color:rgba(47,125,91,.15); }
+  .ph-hint { color:#8a959f; font-size:calc(var(--u) * 4.6); text-align:center; white-space:pre-line; line-height:1.5; }
+  .tx-hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; white-space:pre-line;
+             color:#8a959f; font-size:calc(var(--u) * 3.6); line-height:1.5; background:rgba(255,255,255,.55); pointer-events:none; }
+
+  /* ===== 印刷（PDF） ===== */
   #print { display:none; }
   @media print {
     @page { size:A4 portrait; margin:10mm 10mm 10mm 20mm; }
     body { background:#fff; }
     body > :not(#print) { display:none !important; }
-    #print { display:block; }
-    .page { width:180mm; height:276mm; display:flex; flex-direction:column; gap:3mm; overflow:hidden; break-after:page; page-break-after:always; }
-    .page:last-child { break-after:auto; page-break-after:auto; }
-    .blk { display:flex; gap:2.5mm; height:88mm; }
-    .ph { width:122mm; height:88mm; border:0.3mm dashed #888; display:flex; align-items:center; justify-content:center; }
-    .ph img { max-width:119mm; max-height:85mm; }
-    .tx { flex:1; height:88mm; display:grid; grid-template-rows:1.79fr repeat(9, 1fr); border:0.3mm solid #888; }
-    .tx div { display:flex; align-items:center; justify-content:center; text-align:center; overflow:hidden; white-space:nowrap;
-              border-top:0.2mm solid #bbb; font-family:"Hiragino Kaku Gothic ProN","MS PGothic","Yu Gothic",sans-serif; font-size:9pt; padding:0 1mm; }
-    .tx .t1 { font-size:12pt; white-space:normal; border-top:none; }
-    .tx .t2 { font-size:10.5pt; border-top:0.3mm solid #888; }
+    #print { display:block; --u:1mm; }
+    #print .page { break-after:page; page-break-after:always; }
+    #print .page:last-child { break-after:auto; page-break-after:auto; }
   }
 </style>
 </head>
@@ -96,58 +106,80 @@
 <header>
   <h1>写真報告書</h1>
   <span class="count" id="count"></span>
-  <button id="btnNew">新規</button>
+  <button id="btnMenu">☰ メニュー</button>
 </header>
 
 <main>
-  <section>
-    <h2>報告書の情報</h2>
-    <label>作業名<input type="text" id="mTitle" placeholder="例：差圧計交換作業"></label>
-    <div class="grid2">
-      <label>日付<input type="date" id="mDate"></label>
-      <label>場所（最初の写真に入る値）<input type="text" id="mLoc" placeholder="例：408室スクラバー"></label>
-    </div>
-    <p class="note-s">場所は直前の写真と同じ値が次の写真にも入ります。写真ごとに書き換えられます。</p>
-  </section>
-
-  <details id="boardSec">
-    <summary>電子黒板の設定</summary>
-    <label class="chk" style="margin-top:10px"><input type="checkbox" id="bUse"> 写真に黒板を入れる</label>
-    <div class="grid2">
-      <label>工事名<input type="text" id="bKoji" placeholder="例：○○ビル 空調設備保守"></label>
-      <label>施工者<input type="text" id="bSekou" placeholder="例：○○設備(株)"></label>
-    </div>
-    <p class="note-s">黒板には「工事名・作業内容（作業名）・場所・備考・日付・施工者」のうち、入力した項目だけが表示されます。位置と大きさは写真をタップして調整できます。</p>
-  </details>
-
-  <div id="list"></div>
-  <div class="empty" id="empty">まだ写真がありません。<br>下の「撮影」で写真を撮ると、ここに報告書の枠が追加されます。<br>1ページに3枚ずつ並びます。</div>
+  <p class="guide">写真の枠をタップ → 撮影　／　右の欄をタップ → コメント入力</p>
+  <div id="pages"></div>
 </main>
 
-<div class="bar">
-  <button class="cam" id="btnCam">📷 撮影</button>
-  <button id="btnLib">🖼 写真を選ぶ</button>
-  <button id="btnOut">⬆ 出力</button>
-</div>
+<button class="fab" id="fab">📷 続けて撮影</button>
 <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
 <input type="file" id="libIn" accept="image/*" multiple hidden>
 
-<template id="cardTpl">
-  <div class="card">
-    <div class="card-head">
-      <span class="num"></span><span class="pg"></span><span class="spacer"></span>
-      <button class="ic up" title="上へ">↑</button>
-      <button class="ic down" title="下へ">↓</button>
-      <button class="ic rot" title="90度回転">⟳</button>
-      <button class="ic del" title="削除">✕</button>
-    </div>
-    <div class="thumb"><img alt=""><span class="hint">タップで黒板を調整</span></div>
-    <label>場所<input type="text" class="loc"></label>
-    <label>説明（改行で行が分かれます・7行まで）<textarea class="desc" rows="4" placeholder="例：古いチューブの取外し&#10;※差圧計のH側、L側で各1本"></textarea></label>
-    <label class="noteWrap">黒板の備考<input type="text" class="note" placeholder="例：施工前"></label>
-    <div class="chips noteWrap"><button>施工前</button><button>施工中</button><button>施工後</button><button data-clear>クリア</button></div>
+<!-- 写真の枠をタップしたとき -->
+<div class="modal" id="slotMenu" hidden>
+  <div class="modal-body small menu">
+    <h3 id="smTitle"></h3>
+    <div id="smBtns"></div>
   </div>
-</template>
+</div>
+
+<!-- コメント入力 -->
+<div class="modal full" id="cmt" hidden>
+  <div class="modal-body form">
+    <div class="mhead">
+      <button class="btn" id="cPrev">◀ 前</button>
+      <h3 id="cHead"></h3>
+      <button class="btn" id="cNext">次 ▶</button>
+    </div>
+    <div class="cthumb"><img id="cImg" alt=""></div>
+    <label>場所<input type="text" id="cLoc" placeholder="例：408室スクラバー"></label>
+    <label>作業内容（1行ずつ改行・7行まで）<textarea id="cDesc" rows="7" placeholder="例：古いチューブの取外し&#10;※差圧計のH側、L側で各1本"></textarea></label>
+    <div class="noteWrap">
+      <label>黒板の備考<input type="text" id="cNote" placeholder="例：施工前"></label>
+      <div class="chips" id="cChips"><button>施工前</button><button>施工中</button><button>施工後</button><button data-clear>クリア</button></div>
+    </div>
+    <section style="margin-top:14px">
+      <h2 style="font-size:13px;color:#56616b">全ページ共通</h2>
+      <div class="grid2">
+        <label style="margin-top:0">作業名<input type="text" id="cTitle" placeholder="例：差圧計交換作業"></label>
+        <label style="margin-top:0">日付<input type="date" id="cDate"></label>
+      </div>
+    </section>
+    <button class="btn primary wide" id="cDone">完了</button>
+  </div>
+</div>
+
+<!-- メニュー -->
+<div class="modal full" id="menu" hidden>
+  <div class="modal-body form menu">
+    <div class="mhead"><h3 style="text-align:left">メニュー</h3><button class="btn" id="menuClose" style="width:auto;margin:0">✕ 閉じる</button></div>
+    <section>
+      <h2>出力</h2>
+      <button class="btn" id="outXlsx">📊 Excelファイル（.xlsx）<span class="desc">報告書と同じレイアウト。あとで編集できます</span></button>
+      <button class="btn" id="outPdf">📄 PDF（提出用）<span class="desc">印刷画面から保存します。LINEで送るときもこちら</span></button>
+    </section>
+    <section>
+      <h2>報告書の情報（全ページ共通）</h2>
+      <label>作業名<input type="text" id="mTitle" placeholder="例：差圧計交換作業"></label>
+      <label>日付<input type="date" id="mDate"></label>
+    </section>
+    <section>
+      <h2>電子黒板</h2>
+      <label class="chk"><input type="checkbox" id="bUse"> 写真に黒板を入れる</label>
+      <div class="grid2">
+        <label>工事名<input type="text" id="bKoji" placeholder="例：○○ビル 空調設備保守"></label>
+        <label>施工者<input type="text" id="bSekou" placeholder="例：○○設備(株)"></label>
+      </div>
+      <p class="note-s">黒板には「工事名・作業内容（作業名）・場所・備考・日付・施工者」のうち、入力した項目だけが表示されます。位置と大きさは、写真の枠をタップ →「黒板の位置・大きさ」で調整できます。</p>
+    </section>
+    <section>
+      <button class="btn danger" id="btnNew">🗒 新しい報告書を始める<span class="desc">今の写真と入力内容を消します（工事名・施工者は残ります）</span></button>
+    </section>
+  </div>
+</div>
 
 <div class="modal" id="editor" hidden>
   <div class="modal-body">
@@ -160,15 +192,6 @@
       <span class="sp"></span>
       <button class="btn primary" id="edClose">完了</button>
     </div>
-  </div>
-</div>
-
-<div class="modal" id="outMenu" hidden>
-  <div class="modal-body small menu">
-    <h3>出力</h3>
-    <button class="btn" id="outXlsx">📊 Excelファイル（.xlsx）<span class="desc">今の報告書と同じレイアウト。あとで編集できます（Googleスプレッドシートでも開けます）</span></button>
-    <button class="btn" id="outPdf">📄 PDF（印刷画面から保存）<span class="desc">編集が要らないときはこちらで直接PDFにできます</span></button>
-    <button class="btn" id="outCancel">閉じる</button>
   </div>
 </div>
 
@@ -197,9 +220,11 @@ const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad2
 const jpDate = s => { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return `${y}年${m}月${d}日`; };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const DESC_LINES = 7;           // Excelの説明欄（場所の下）の行数
 const PER_PAGE = 3;
+const SLOT_NAMES = ['上', '中', '下'];
 
 function toast(msg, ms = 2600) {
   const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
@@ -240,11 +265,43 @@ const dbPut = p => tx('readwrite', s => s.put(p));
 const dbDel = id => tx('readwrite', s => s.delete(id));
 const dbClear = () => tx('readwrite', s => s.clear());
 
+/* 1件 = 報告書の1枠（写真＋コメント）。order が枠の番号（0=1ページ目の上, 1=中, 2=下, 3=2ページ目の上…）。
+   空いた枠もそのまま残るので、画面で見た並びのまま出力される */
 let photos = [];
 const saveLater = new Map();
 function savePhoto(p) {
   clearTimeout(saveLater.get(p.id));
   saveLater.set(p.id, setTimeout(() => dbPut(p).catch(e => toast('保存に失敗しました: ' + e.message)), 300));
+}
+const bySlot = s => photos.find(p => p.order === s);
+const slotLabel = s => `${Math.floor(s / PER_PAGE) + 1}ページ目・${SLOT_NAMES[s % PER_PAGE]}`;
+const lastSlot = () => photos.reduce((m, p) => Math.max(m, p.order), -1);
+const usedPages = () => lastSlot() < 0 ? 0 : Math.floor(lastSlot() / PER_PAGE) + 1;
+const nextFreeSlot = () => photos.reduce((m, p) => p.blob ? Math.max(m, p.order) : m, -1) + 1;
+// 出力するページ（中身が1つもないページは飛ばす）
+const outPageIdx = () => { const r = []; for (let pi = 0; pi < usedPages(); pi++) if ([0, 1, 2].some(b => bySlot(pi * PER_PAGE + b))) r.push(pi); return r; };
+function prevLoc(s) {
+  let best = null;
+  for (const p of photos) if (p.order < s && p.loc && (!best || p.order > best.order)) best = p;
+  return best ? best.loc : (meta.defLoc || '');
+}
+function ensureRec(s) {
+  let p = bySlot(s);
+  if (!p) {
+    p = { id: uid(), order: s, blob: null, w: 0, h: 0, rot: 0, loc: prevLoc(s), desc: '', note: '',
+          board: { on: true, x: null, y: null, s: 0.42 } };
+    photos.push(p); savePhoto(p);
+  }
+  return p;
+}
+async function removeRec(p) {
+  photos = photos.filter(x => x !== p); clearTimeout(saveLater.get(p.id));
+  imgCache.delete(p.id); dropThumb(p); await dbDel(p.id);
+}
+// 写真もコメントも入っていない枠は消す
+async function dropIfEmpty(s) {
+  const p = bySlot(s);
+  if (p && !p.blob && !(p.desc || '').trim() && !(p.note || '').trim() && (p.loc || '') === prevLoc(s)) await removeRec(p);
 }
 
 /* ================= 画像 ================= */
@@ -332,81 +389,167 @@ function composeSync(img, p, maxSide) {
 }
 async function compose(p, maxSide) { return composeSync(await getImg(p), p, maxSide); }
 
-/* ================= 一覧 ================= */
-const cardOf = new Map();
-function updateCount() {
-  const n = photos.length;
-  $('#count').textContent = n ? `${n}枚 / ${Math.ceil(n / PER_PAGE)}ページ` : '';
-  $('#empty').style.display = n ? 'none' : 'block';
-  photos.forEach((p, i) => {
-    const c = cardOf.get(p.id); if (!c) return;
-    c.querySelector('.num').textContent = `No.${i + 1}`;
-    c.querySelector('.pg').textContent = `（${Math.floor(i / PER_PAGE) + 1}ページ目）`;
-  });
+/* ================= 報告書ページの表示 ================= */
+const thumbs = new Map(); // id → Promise<画像URL>
+function thumbOf(p) {
+  if (!thumbs.has(p.id)) thumbs.set(p.id, compose(p, 900).then(cv => new Promise(r => cv.toBlob(b => r(URL.createObjectURL(b)), 'image/jpeg', 0.8))));
+  return thumbs.get(p.id);
 }
-async function updateThumb(p) {
-  const c = cardOf.get(p.id); if (!c) return;
-  const cv = await compose(p, 900);
-  cv.toBlob(b => {
-    const img = c.querySelector('.thumb img');
-    if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
-    img.dataset.url = URL.createObjectURL(b); img.src = img.dataset.url;
-  }, 'image/jpeg', 0.8);
+function dropThumb(p) {
+  const t = thumbs.get(p.id); if (!t) return;
+  thumbs.delete(p.id); t.then(u => setTimeout(() => URL.revokeObjectURL(u), 5000)).catch(() => {});
 }
-const refreshAllThumbs = debounce(() => photos.forEach(updateThumb), 400);
-function applyBoardVisibility() {
-  document.querySelectorAll('.noteWrap').forEach(e => e.style.display = meta.board.use ? '' : 'none');
+function descLines(p) {
+  const ls = (p.desc || '').split(/\r?\n/);
+  if (ls.length > DESC_LINES) ls.splice(DESC_LINES - 1, ls.length, ls.slice(DESC_LINES - 1).join(' '));
+  while (ls.length < DESC_LINES) ls.push('');
+  return ls;
 }
-function makeCard(p) {
-  const c = $('#cardTpl').content.firstElementChild.cloneNode(true);
-  cardOf.set(p.id, c);
-  const thumbLater = debounce(() => updateThumb(p), 400);
-  const loc = c.querySelector('.loc'), desc = c.querySelector('.desc'), note = c.querySelector('.note');
-  loc.value = p.loc || ''; desc.value = p.desc || ''; note.value = p.note || '';
-  loc.addEventListener('input', () => { p.loc = loc.value; savePhoto(p); thumbLater(); });
-  desc.addEventListener('input', () => { p.desc = desc.value; savePhoto(p); });
-  note.addEventListener('input', () => { p.note = note.value; savePhoto(p); thumbLater(); });
-  c.querySelectorAll('.chips button').forEach(b => b.addEventListener('click', () => {
-    note.value = b.hasAttribute('data-clear') ? '' : b.textContent; p.note = note.value; savePhoto(p); updateThumb(p);
-  }));
-  c.querySelector('.thumb').addEventListener('click', () => openEditor(p));
-  c.querySelector('.up').addEventListener('click', () => move(p, -1));
-  c.querySelector('.down').addEventListener('click', () => move(p, 1));
-  c.querySelector('.rot').addEventListener('click', () => { p.rot = ((p.rot || 0) + 90) % 360; p.board.x = p.board.y = null; savePhoto(p); updateThumb(p); });
-  c.querySelector('.del').addEventListener('click', async () => {
-    if (!confirm('この写真を報告書から削除しますか？')) return;
-    photos = photos.filter(x => x !== p); cardOf.delete(p.id); c.remove(); imgCache.delete(p.id);
-    await dbDel(p.id); renumber(); updateCount();
-  });
-  c.querySelectorAll('.noteWrap').forEach(e => e.style.display = meta.board.use ? '' : 'none');
-  updateThumb(p);
-  return c;
+// 1ページ分（Excelと同じ並び）。screen=true なら画面用（タップ用の案内つき）
+function pageEl(pi, screen, setSrc) {
+  const page = el('div', 'page');
+  for (let b = 0; b < PER_PAGE; b++) {
+    const s = pi * PER_PAGE + b, p = bySlot(s);
+    const blk = el('div', 'blk'), ph = el('div', 'ph'), tx = el('div', 'tx');
+    if (p && p.blob) { const im = el('img'); im.alt = ''; ph.appendChild(im); setSrc(p, im); }
+    else if (screen) ph.appendChild(el('span', 'ph-hint', '📷\nタップして撮影'));
+    const cells = p ? [meta.title, jpDate(meta.date), p.loc || '', ...descLines(p)] : Array(DESC_LINES + 3).fill('');
+    cells.forEach((t, i) => tx.appendChild(el('div', i === 0 ? 't1' : i === 1 ? 't2' : '', t)));
+    if (screen) {
+      if (p && !meta.title) { const t1 = tx.firstChild; t1.textContent = '（作業名）'; t1.classList.add('faint'); }
+      if (!p) tx.appendChild(el('span', 'tx-hint', '✎ タップして\nコメント入力'));
+      ph.classList.add('tap'); tx.classList.add('tap'); ph.dataset.slot = tx.dataset.slot = s;
+      ph.dataset.kind = 'photo'; tx.dataset.kind = 'text';
+    }
+    blk.append(ph, tx); page.appendChild(blk);
+  }
+  return page;
 }
-function renumber() { photos.forEach((p, i) => { if (p.order !== i) { p.order = i; savePhoto(p); } }); }
-function move(p, d) {
-  const i = photos.indexOf(p), j = i + d; if (j < 0 || j >= photos.length) return;
-  [photos[i], photos[j]] = [photos[j], photos[i]];
-  const list = $('#list'), a = cardOf.get(photos[i].id), b = cardOf.get(photos[j].id);
-  if (d < 0) list.insertBefore(b, a); else list.insertBefore(a, b.nextSibling);
-  renumber(); updateCount(); b.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+function fitPages() {
+  const root = $('#pages'); const w = Math.min(root.clientWidth, 760);
+  root.style.setProperty('--u', (w / 192) + 'px');
 }
-async function addFiles(files) {
-  let added = 0;
+function renderPages() {
+  const root = $('#pages'), used = usedPages(), n = used + 1;
+  root.innerHTML = '';
+  for (let pi = 0; pi < n; pi++) {
+    const cap = el('div', 'pcap', `${pi + 1}ページ目`);
+    if (pi === used && used > 0) cap.appendChild(el('span', 'sub', '（写真を入れるとページが増えます）'));
+    const sheet = el('div', 'sheet'); sheet.id = 'page' + pi;
+    sheet.appendChild(pageEl(pi, true, (p, im) => thumbOf(p).then(u => { im.src = u; }).catch(() => {})));
+    root.append(cap, sheet);
+  }
+  const cnt = photos.filter(p => p.blob).length;
+  $('#count').textContent = cnt ? `${cnt}枚 / ${outPageIdx().length}ページ` : '';
+}
+const renderLater = debounce(renderPages, 250);
+function refreshAll() { photos.forEach(dropThumb); renderLater(); }
+const scrollToSlot = s => { const e = document.getElementById('page' + Math.floor(s / PER_PAGE)); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+$('#pages').addEventListener('click', e => {
+  const t = e.target.closest('.tap'); if (!t) return;
+  const s = +t.dataset.slot;
+  if (t.dataset.kind === 'photo') openSlotMenu(s); else openCmt(s);
+});
+
+/* ================= 写真の追加・入れ替え ================= */
+let pending = { slot: null, replace: false };
+function pick(sel, s, replace) { pending = { slot: s, replace }; $(sel).click(); }
+// start の枠から順に、写真の入っていない枠へ入れていく（replace なら最初の1枚は start を差し替え）
+async function addFiles(files, start = nextFreeSlot(), replace = false) {
+  let s = start, first = true, lastS = null;
   for (const f of files) {
     try {
       const { blob, w, h } = await normalizeImage(f);
-      const last = photos[photos.length - 1];
-      const p = { id: uid(), order: photos.length, blob, w, h, rot: 0,
-                  loc: last ? last.loc : meta.defLoc, desc: '', note: '',
-                  board: { on: true, x: null, y: null, s: 0.42 } };
-      photos.push(p); await dbPut(p);
-      const c = makeCard(p); $('#list').appendChild(c); added++;
+      if (!(replace && first)) while (bySlot(s) && bySlot(s).blob) s++;
+      const p = ensureRec(s);
+      Object.assign(p, { blob, w, h, rot: 0 }); p.board.x = p.board.y = null;
+      imgCache.delete(p.id); dropThumb(p);
+      clearTimeout(saveLater.get(p.id)); await dbPut(p);
+      lastS = s; s++; first = false;
     } catch (e) { toast('写真を読み込めませんでした: ' + e.message); }
   }
-  updateCount();
-  if (added) { const last = cardOf.get(photos[photos.length - 1].id); setTimeout(() => last.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }
+  renderPages();
+  if (lastS != null) setTimeout(() => scrollToSlot(lastS), 100);
 }
 window.addFiles = addFiles; // 動作確認用
+
+async function swapSlots(a, b) {
+  if (b < 0) return;
+  const pa = bySlot(a), pb = bySlot(b);
+  if (pa) { pa.order = b; savePhoto(pa); }
+  if (pb) { pb.order = a; savePhoto(pb); }
+  renderPages(); scrollToSlot(b);
+}
+function openSlotMenu(s) {
+  const p = bySlot(s), has = !!(p && p.blob);
+  $('#smTitle').textContent = `${slotLabel(s)}の写真`;
+  const box = $('#smBtns'); box.innerHTML = '';
+  const add = (label, desc, fn, cls) => {
+    const b = el('button', 'btn' + (cls ? ' ' + cls : ''), label);
+    if (desc) b.appendChild(el('span', 'desc', desc));
+    b.addEventListener('click', () => { $('#slotMenu').hidden = true; fn && fn(); });
+    box.appendChild(b);
+  };
+  add('📷 撮影する', has ? '今の写真と差し替えます' : '', () => pick('#camIn', s, has), 'primary');
+  add('🖼 写真を選ぶ', has ? '今の写真と差し替えます' : '複数選ぶと、次の空いている枠にも順に入ります', () => pick('#libIn', s, has));
+  if (has) {
+    if (meta.board.use) add('🪧 黒板の位置・大きさ', '', () => openEditor(p));
+    add('⟳ 90度回転', '', () => { p.rot = ((p.rot || 0) + 90) % 360; p.board.x = p.board.y = null; savePhoto(p); dropThumb(p); renderPages(); });
+  }
+  if (p || bySlot(s - 1) || bySlot(s + 1)) {
+    if (s > 0) add('↑ 1つ前の枠と入れ替え', '', () => swapSlots(s, s - 1));
+    add('↓ 1つ後の枠と入れ替え', '', () => swapSlots(s, s + 1));
+  }
+  if (p) add('🗑 この枠を空にする', '写真とコメントを消します', async () => {
+    if (!confirm(`${slotLabel(s)}の写真とコメントを消しますか？`)) return;
+    await removeRec(p); renderPages();
+  }, 'danger');
+  add('閉じる', '', null);
+  $('#slotMenu').hidden = false;
+}
+$('#slotMenu').addEventListener('click', e => { if (e.target.id === 'slotMenu') $('#slotMenu').hidden = true; });
+$('#fab').addEventListener('click', () => pick('#camIn', nextFreeSlot(), false));
+['#camIn', '#libIn'].forEach(sel => $(sel).addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  if (!files.length) return;
+  const { slot, replace } = pending; pending = { slot: null, replace: false };
+  busy(true, '写真を取り込み中…');
+  try { await addFiles(files, slot == null ? nextFreeSlot() : slot, replace); } finally { busy(false); }
+}));
+
+/* ================= コメント入力 ================= */
+let cs = null; // 入力中の枠
+function openCmt(s) {
+  cs = s; const p = bySlot(s);
+  $('#cHead').textContent = slotLabel(s);
+  $('#cPrev').disabled = s === 0;
+  $('#cLoc').value = p ? p.loc || '' : prevLoc(s);
+  $('#cDesc').value = p ? p.desc || '' : '';
+  $('#cNote').value = p ? p.note || '' : '';
+  $('#cTitle').value = meta.title || ''; $('#cDate').value = meta.date || '';
+  const im = $('#cImg'); im.removeAttribute('src'); im.style.display = 'none';
+  if (p && p.blob) thumbOf(p).then(u => { if (cs === s) { im.src = u; im.style.display = ''; } });
+  $('#cmt').hidden = false;
+}
+async function closeCmt(next) {
+  const s = cs; await dropIfEmpty(s); renderPages();
+  if (next != null && next >= 0) openCmt(next);
+  else { $('#cmt').hidden = true; cs = null; scrollToSlot(s); }
+}
+[['#cLoc', 'loc', true], ['#cDesc', 'desc', false], ['#cNote', 'note', true]].forEach(([sel, key, onBoard]) => {
+  $(sel).addEventListener('input', e => {
+    const p = ensureRec(cs); p[key] = e.target.value; savePhoto(p);
+    if (onBoard) dropThumb(p);
+  });
+});
+$('#cChips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const v = b.hasAttribute('data-clear') ? '' : b.textContent;
+  $('#cNote').value = v; const p = ensureRec(cs); p.note = v; savePhoto(p); dropThumb(p);
+});
+$('#cDone').addEventListener('click', () => closeCmt());
+$('#cPrev').addEventListener('click', () => closeCmt(cs - 1));
+$('#cNext').addEventListener('click', () => closeCmt(cs + 1));
 
 /* ================= 黒板の位置調整 ================= */
 let edP = null, edImg = null, drag = null;
@@ -446,16 +589,9 @@ $('#edCanvas').addEventListener('pointermove', e => { if (drag) setBoardPos(canv
 $('#edOn').addEventListener('change', e => { edP.board.on = e.target.checked; drawEditor(); });
 $('#edSize').addEventListener('input', e => { edP.board.s = +e.target.value; drawEditor(); });
 $('#edReset').addEventListener('click', () => { edP.board.x = edP.board.y = null; drawEditor(); });
-$('#edClose').addEventListener('click', () => { $('#editor').hidden = true; savePhoto(edP); updateThumb(edP); edP = null; });
+$('#edClose').addEventListener('click', () => { $('#editor').hidden = true; savePhoto(edP); dropThumb(edP); edP = null; renderPages(); });
 
 /* ================= Excel出力 ================= */
-function chunk(a, n) { const r = []; for (let i = 0; i < a.length; i += n) r.push(a.slice(i, i + n)); return r; }
-function descLines(p) {
-  const ls = (p.desc || '').split(/\r?\n/);
-  if (ls.length > DESC_LINES) ls.splice(DESC_LINES - 1, ls.length, ls.slice(DESC_LINES - 1).join(' '));
-  while (ls.length < DESC_LINES) ls.push('');
-  return ls;
-}
 /* ---- xlsx（zip）を自前で組み立てる。Excel本体と同じ形式で写真を埋め込み、
         iPhoneの「ファイル」アプリのプレビューやNumbersでも写真が見えるようにする ---- */
 const xmlEsc = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
@@ -533,9 +669,10 @@ async function buildXlsx() {
   const st = makeStyles();
   const S = {
     title: st.xf({ font: 16, h: 'center', wrap: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
-    date: st.xf({ font: 14, numFmt: 176, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'hair' } }),
-    line: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'hair', b: 'hair' } }),
-    last: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'hair', b: 'thin' } }),
+    // コメント欄の罫線は細い実線（点線の hair はiPhoneなどで見えないことがある）
+    date: st.xf({ font: 14, numFmt: 176, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
+    line: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
+    last: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
   };
   const frameXf = (r, c, top) => st.xf({ border: {
     t: r === top ? 'dashed' : null, b: r === top + 9 ? 'dashed' : null,
@@ -547,7 +684,7 @@ async function buildXlsx() {
   const L = { 2: 'B', 3: 'C', 4: 'D', 6: 'F' };
 
   const files = [], media = [], sheetNames = [];
-  const pages = chunk(photos, PER_PAGE);
+  const pages = outPageIdx().map(pi => [0, 1, 2].map(b => bySlot(pi * PER_PAGE + b)));
   let imgNo = 0;
   for (let pi = 0; pi < pages.length; pi++) {
     const name = pad2(pi + 1); sheetNames.push(name);
@@ -571,7 +708,7 @@ async function buildXlsx() {
         else if (r === top + 1) put(r, 6, S.date, p && meta.date ? dateSerial : null);
         else put(r, 6, r === top + 9 ? S.last : S.line, lines[r - top - 2]);
       }
-      if (!p) continue;
+      if (!p || !p.blob) continue;
       // 写真：枠の中央に収め、Excelと同じ twoCellAnchor 形式で配置
       const cv = await compose(p, 1600);
       const bytes = new Uint8Array(await (await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85))).arrayBuffer());
@@ -658,28 +795,17 @@ function fileBaseName() {
 /* ================= PDF（印刷） ================= */
 async function buildPrint() {
   const root = $('#print'); root.innerHTML = '';
-  const imgs = [];
-  for (const pg of chunk(photos, PER_PAGE)) {
-    const page = document.createElement('div'); page.className = 'page';
-    for (let b = 0; b < PER_PAGE; b++) {
-      const p = pg[b];
-      const blk = document.createElement('div'); blk.className = 'blk';
-      const ph = document.createElement('div'); ph.className = 'ph';
-      const tx = document.createElement('div'); tx.className = 'tx';
-      if (p) {
-        const im = document.createElement('img'); im.src = (await compose(p, 1400)).toDataURL('image/jpeg', 0.85);
-        ph.appendChild(im); imgs.push(im);
-      }
-      const cells = [p ? meta.title : '', p ? jpDate(meta.date) : '', ...(p ? [p.loc || '', ...descLines(p)] : Array(DESC_LINES + 1).fill(''))];
-      cells.forEach((t, i) => { const d = document.createElement('div'); if (i === 0) d.className = 't1'; if (i === 1) d.className = 't2'; d.textContent = t; tx.appendChild(d); });
-      blk.append(ph, tx); page.appendChild(blk);
-    }
-    root.appendChild(page);
+  const jobs = [];
+  for (const pi of outPageIdx()) {
+    root.appendChild(pageEl(pi, false, (p, im) => jobs.push(compose(p, 1400).then(cv => {
+      im.src = cv.toDataURL('image/jpeg', 0.85);
+      return im.decode ? im.decode().catch(() => {}) : null;
+    }))));
   }
-  await Promise.all(imgs.map(i => i.decode ? i.decode().catch(() => {}) : null));
+  await Promise.all(jobs);
 }
 
-/* ================= 出力ダイアログ ================= */
+/* ================= 出力 ================= */
 let readyFile = null;
 function showReady(title, msg, mainLabel, onMain, file) {
   readyFile = file;
@@ -698,13 +824,13 @@ async function shareFile(file) {
     catch (e) { if (e.name !== 'AbortError') { toast('共有できなかったのでダウンロードします'); download(file); } }
   } else download(file);
 }
-$('#btnOut').addEventListener('click', () => {
-  if (!photos.length) return toast('写真がまだありません');
-  $('#outMenu').hidden = false;
-});
-$('#outCancel').addEventListener('click', () => { $('#outMenu').hidden = true; });
+function canOutput() {
+  if (outPageIdx().length) return true;
+  toast('写真やコメントがまだありません'); return false;
+}
 $('#outXlsx').addEventListener('click', async () => {
-  $('#outMenu').hidden = true; busy(true, 'Excelを作成中…');
+  if (!canOutput()) return;
+  $('#menu').hidden = true; busy(true, 'Excelを作成中…');
   try {
     const blob = await buildXlsx();
     const file = new File([blob], fileBaseName() + '.xlsx', { type: XLSX_MIME });
@@ -714,7 +840,8 @@ $('#outXlsx').addEventListener('click', async () => {
   } catch (e) { busy(false); alert('Excelの作成に失敗しました。\n' + e.message); }
 });
 $('#outPdf').addEventListener('click', async () => {
-  $('#outMenu').hidden = true; busy(true, 'PDF用の画面を準備中…');
+  if (!canOutput()) return;
+  $('#menu').hidden = true; busy(true, 'PDF用の画面を準備中…');
   try {
     await buildPrint(); busy(false);
     showReady('PDFの準備ができました', '「印刷」を押し、印刷画面の共有ボタン（iPhone/iPad）または「PDFに保存」（パソコン）で保存してください。',
@@ -724,43 +851,46 @@ $('#outPdf').addEventListener('click', async () => {
 $('#readyDl').addEventListener('click', () => readyFile && download(readyFile));
 $('#readyClose').addEventListener('click', () => { $('#ready').hidden = true; });
 
-/* ================= 画面の入力 ================= */
+/* ================= メニュー ================= */
+function applyBoardVisibility() {
+  document.querySelectorAll('.noteWrap').forEach(e => e.style.display = meta.board.use ? '' : 'none');
+}
 function bindMeta() {
-  const map = [['#mTitle', 'title', true], ['#mDate', 'date', true], ['#mLoc', 'defLoc', false]];
-  map.forEach(([sel, key, affectsBoard]) => {
-    const el = $(sel); el.value = meta[key] || '';
-    el.addEventListener('input', () => { meta[key] = el.value; saveMeta(); if (affectsBoard) refreshAllThumbs(); });
+  // 作業名・日付はメニューとコメント入力の両方にある
+  [['#mTitle', 'title'], ['#cTitle', 'title'], ['#mDate', 'date'], ['#cDate', 'date']].forEach(([sel, key]) => {
+    $(sel).addEventListener('input', e => { meta[key] = e.target.value; saveMeta(); refreshAll(); });
   });
   [['#bKoji', 'koji'], ['#bSekou', 'sekou']].forEach(([sel, key]) => {
-    const el = $(sel); el.value = meta.board[key] || '';
-    el.addEventListener('input', () => { meta.board[key] = el.value; saveMeta(); refreshAllThumbs(); });
+    const e = $(sel); e.value = meta.board[key] || '';
+    e.addEventListener('input', () => { meta.board[key] = e.value; saveMeta(); refreshAll(); });
   });
   $('#bUse').checked = meta.board.use;
-  $('#bUse').addEventListener('change', e => { meta.board.use = e.target.checked; saveMeta(); applyBoardVisibility(); refreshAllThumbs(); });
+  $('#bUse').addEventListener('change', e => { meta.board.use = e.target.checked; saveMeta(); applyBoardVisibility(); refreshAll(); });
+  applyBoardVisibility();
 }
-$('#btnCam').addEventListener('click', () => $('#camIn').click());
-$('#btnLib').addEventListener('click', () => $('#libIn').click());
-['#camIn', '#libIn'].forEach(s => $(s).addEventListener('change', async e => {
-  const files = [...e.target.files]; e.target.value = '';
-  if (files.length) { busy(true, '写真を取り込み中…'); try { await addFiles(files); } finally { busy(false); } }
-}));
+$('#btnMenu').addEventListener('click', () => {
+  $('#mTitle').value = meta.title || ''; $('#mDate').value = meta.date || '';
+  $('#menu').hidden = false;
+});
+$('#menuClose').addEventListener('click', () => { $('#menu').hidden = true; });
 $('#btnNew').addEventListener('click', async () => {
-  if (!confirm('今の写真と入力内容を消して、新しい報告書を始めますか？\n（工事名・施工者の設定は残ります）')) return;
-  await dbClear(); photos = []; cardOf.clear(); imgCache.clear(); $('#list').innerHTML = '';
+  if (!confirm('今の写真と入力内容を消して、新しい報告書を始めますか？\n（工事名・施工者の設定は残ります）\n\n消す前に、必要ならExcelかPDFで出力しておいてください。')) return;
+  await dbClear(); photos.forEach(dropThumb); photos = []; imgCache.clear();
   meta = Object.assign(defaultMeta(), { board: meta.board }); saveMeta();
-  $('#mTitle').value = ''; $('#mDate').value = meta.date; $('#mLoc').value = '';
-  updateCount(); window.scrollTo(0, 0);
+  $('#mTitle').value = ''; $('#mDate').value = meta.date;
+  $('#menu').hidden = true; renderPages(); window.scrollTo(0, 0);
+  toast('新しい報告書を始めました');
 });
 
 /* ================= 起動 ================= */
 (async function init() {
-  bindMeta();
+  bindMeta(); fitPages();
+  window.addEventListener('resize', debounce(fitPages, 100));
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   try {
     photos = (await dbAll()).sort((a, b) => a.order - b.order);
-    photos.forEach(p => $('#list').appendChild(makeCard(p)));
   } catch (e) { toast('保存データを読めませんでした: ' + e.message); }
-  updateCount();
+  renderPages();
 })();
 </script>
 </body>

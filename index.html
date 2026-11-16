@@ -74,7 +74,7 @@
   /* ===== 報告書のページ（画面表示とPDFで共通）。--u は 1mm に相当する長さ ===== */
   .page { width:calc(var(--u) * 180); height:calc(var(--u) * 276); display:flex; flex-direction:column; gap:calc(var(--u) * 3); background:#fff; overflow:hidden; }
   .blk { display:flex; gap:calc(var(--u) * 2.5); height:calc(var(--u) * 88); }
-  .ph { position:relative; width:calc(var(--u) * 122); height:calc(var(--u) * 88); border:max(0.5px, calc(var(--u) * 0.3)) dashed #888;
+  .ph { position:relative; width:calc(var(--u) * 122); height:calc(var(--u) * 88); border:max(0.5px, calc(var(--u) * 0.3)) solid #888;
         display:flex; align-items:center; justify-content:center; }
   .ph img { max-width:calc(100% - var(--u) * 3); max-height:calc(100% - var(--u) * 3); }
   .tx { position:relative; flex:1; height:calc(var(--u) * 88); display:grid; grid-template-rows:1.79fr repeat(9, 1fr);
@@ -674,9 +674,11 @@ async function buildXlsx() {
     line: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
     last: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
   };
+  // 写真の枠：セル結合をせず、外周のセルそれぞれに実線を引く
+  // （結合セルや点線だと、iPhoneのプレビューでは枠が消えることがあるため）
   const frameXf = (r, c, top) => st.xf({ border: {
-    t: r === top ? 'dashed' : null, b: r === top + 9 ? 'dashed' : null,
-    l: c === 2 ? 'dashed' : null, r: c === 4 ? 'dashed' : null } });
+    t: r === top ? 'thin' : null, b: r === top + 9 ? 'thin' : null,
+    l: c === 2 ? 'thin' : null, r: c === 4 ? 'thin' : null } });
   const sst = [], sstMap = new Map();
   const sIdx = s => { if (!sstMap.has(s)) { sstMap.set(s, sst.length); sst.push(s); } return sstMap.get(s); };
   const [yy, mm, dd] = (meta.date || todayStr()).split('-').map(Number);
@@ -739,7 +741,6 @@ async function buildXlsx() {
       '<sheetFormatPr defaultRowHeight="13.5"/>' +
       `<cols>${COLS.map(([c, w]) => `<col min="${c}" max="${c}" width="${w}" customWidth="1"/>`).join('')}</cols>` +
       `<sheetData>${rowsXml}</sheetData>` +
-      `<mergeCells count="${PER_PAGE}">${Array.from({ length: PER_PAGE }, (_, b) => `<mergeCell ref="B${2 + b * 11}:D${11 + b * 11}"/>`).join('')}</mergeCells>` +
       '<pageMargins left="0.787" right="0.394" top="0.394" bottom="0.394" header="0.512" footer="0.512"/>' +
       '<pageSetup paperSize="9" scale="75" orientation="portrait"/>' +
       (anchors.length ? '<drawing r:id="rId1"/>' : '') + '</worksheet>' });

@@ -641,7 +641,7 @@ function makeStyles() {
     xml() {
       return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-        '<numFmts count="1"><numFmt numFmtId="176" formatCode="yyyy&quot;年&quot;m&quot;月&quot;d&quot;日&quot;"/></numFmts>' +
+        '<numFmts count="2"><numFmt numFmtId="176" formatCode="yyyy&quot;年&quot;m&quot;月&quot;d&quot;日&quot;"/><numFmt numFmtId="177" formatCode=";;;"/></numFmts>' +
         `<fonts count="${fonts.length}">${fonts.join('')}</fonts>` +
         '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
         `<borders count="${borders.length}">${borders.join('')}</borders>` +
@@ -673,6 +673,7 @@ async function buildXlsx() {
     date: st.xf({ font: 14, numFmt: 176, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
     line: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
     last: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
+    hidden: st.xf({ numFmt: 177 }),
   };
   // 写真の枠：セル結合をせず、外周のセルそれぞれに実線を引く
   // （結合セルや点線だと、iPhoneのプレビューでは枠が消えることがあるため）
@@ -691,6 +692,9 @@ async function buildXlsx() {
   for (let pi = 0; pi < pages.length; pi++) {
     const name = pad2(pi + 1); sheetNames.push(name);
     const rows = new Map(); // 行番号 → セルXML（列順）
+    // iPhoneのプレビューは「値が入っている最後の行」までしか表示しないため、
+    // 印刷範囲の外（A33）に見えない値を置いて、空いた枠も最後まで表示させる
+    rows.set(33, [`<c r="A33" s="${S.hidden}"><v>0</v></c>`]);
     const put = (r, c, s, v) => {
       if (!rows.has(r)) rows.set(r, []);
       const ref = L[c] + r;
@@ -736,7 +740,7 @@ async function buildXlsx() {
     }
     const sn = pi + 1;
     files.push({ name: `xl/worksheets/sheet${sn}.xml`, data: HEAD +
-      `<worksheet xmlns="${NS}" xmlns:r="${NSR}"><dimension ref="B2:F33"/>` +
+      `<worksheet xmlns="${NS}" xmlns:r="${NSR}"><dimension ref="A2:F33"/>` +
       `<sheetViews><sheetView showGridLines="0"${pi === 0 ? ' tabSelected="1"' : ''} workbookViewId="0"/></sheetViews>` +
       '<sheetFormatPr defaultRowHeight="13.5"/>' +
       `<cols>${COLS.map(([c, w]) => `<col min="${c}" max="${c}" width="${w}" customWidth="1"/>`).join('')}</cols>` +

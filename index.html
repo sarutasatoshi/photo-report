@@ -99,7 +99,8 @@
   .tx div { display:flex; align-items:center; justify-content:center; text-align:center; overflow:hidden; white-space:nowrap; min-width:0;
             border-top:max(0.5px, calc(var(--u) * 0.25)) solid #808080; color:#000;
             font-family:"Hiragino Kaku Gothic ProN","MS PGothic","Yu Gothic",sans-serif; font-size:calc(var(--u) * 3.2); padding:0 calc(var(--u) * 1); }
-  .tx .t1 { font-size:calc(var(--u) * 4.2); white-space:normal; border-top:none; line-height:1.25; }
+  .tx .t1 { font-size:calc(var(--u) * 4.2); white-space:pre-line; border-top:none; line-height:1.25; }
+  .tx .t1.sm { font-size:calc(var(--u) * 3.2); }
   .tx .t2 { font-size:calc(var(--u) * 3.7); border-top:max(0.5px, calc(var(--u) * 0.35)) solid #555; }
   .tx .faint { color:#a0a8b0; }
   /* 1ページ目の一番上の現場名 */
@@ -170,6 +171,7 @@
       <button class="btn" id="cNext">次 ▶</button>
     </div>
     <div class="cthumb"><img id="cImg" alt=""></div>
+    <label>作業名<span style="color:#7a858f">… この枠だけに入ります</span><input type="text" id="cWork" placeholder="例：差圧計交換作業"></label>
     <label>場所<input type="text" id="cLoc" placeholder="例：408室スクラバー"></label>
     <label>作業内容（1行ずつ改行・7行まで）<textarea id="cDesc" rows="7" placeholder="例：古いチューブの取外し&#10;※差圧計のH側、L側で各1本"></textarea></label>
     <div class="noteWrap">
@@ -179,10 +181,7 @@
     <section style="margin-top:14px">
       <h2 style="font-size:13px;color:#56616b">全ページ共通</h2>
       <label style="margin-top:0">現場名（客先名）<input type="text" id="cSite" placeholder="例：○○株式会社 △△工場"></label>
-      <div class="grid2" style="margin-top:10px">
-        <label style="margin-top:0">作業名<input type="text" id="cTitle" placeholder="例：差圧計交換作業"></label>
-        <label style="margin-top:0">日付<input type="date" id="cDate"></label>
-      </div>
+      <label>日付<input type="date" id="cDate"></label>
     </section>
     <button class="btn primary wide" id="cDone">完了</button>
   </div>
@@ -200,7 +199,7 @@
     <section>
       <h2>報告書の情報</h2>
       <label>現場名（客先名）<span style="color:#7a858f">… 1ページ目の一番上に入ります</span><input type="text" id="mSite" placeholder="例：○○株式会社 △△工場"></label>
-      <label>作業名<input type="text" id="mTitle" placeholder="例：差圧計交換作業"></label>
+      <label>報告書の作業名<span style="color:#7a858f">… 一覧・ファイル名に使います。写真の枠の作業名は、枠をタップして1つずつ変えられます</span><input type="text" id="mTitle" placeholder="例：差圧計交換作業"></label>
       <label>日付<input type="date" id="mDate"></label>
     </section>
     <section>
@@ -360,7 +359,7 @@ async function summarize() {
   const r = meta; if (!r) return;
   const ps = photos.slice().sort((a, b) => a.order - b.order);
   r.count = ps.filter(p => p.blob).length; r.pages = outPageIdx().length;
-  r.text = ps.map(p => [p.loc, p.desc, p.note].filter(Boolean).join(' ')).join(' ').slice(0, 3000);
+  r.text = ps.map(p => [p.title, p.loc, p.desc, p.note].filter(Boolean).join(' ')).join(' ').slice(0, 3000);
   const f = ps.find(p => p.blob), key = f ? `${f.id}:${f.v || ''}:${f.rot || 0}` : '';
   if (key !== r.thumbKey) {
     r.thumbKey = key; r.thumb = '';
@@ -381,10 +380,16 @@ function prevLoc(s) {
   for (const p of photos) if (p.order < s && p.loc && (!best || p.order > best.order)) best = p;
   return best ? best.loc : (meta.defLoc || '');
 }
+// 作業名は枠ごと。新しい枠には、前の枠の作業名（なければ報告書の作業名）を最初に入れておく
+function prevTitle(s) {
+  let best = null;
+  for (const p of photos) if (p.order < s && p.title && (!best || p.order > best.order)) best = p;
+  return best ? best.title : (meta.title || '');
+}
 function ensureRec(s) {
   let p = bySlot(s);
   if (!p) {
-    p = { id: uid(), rid: meta.id, order: s, blob: null, w: 0, h: 0, rot: 0, loc: prevLoc(s), desc: '', note: '',
+    p = { id: uid(), rid: meta.id, order: s, blob: null, w: 0, h: 0, rot: 0, title: prevTitle(s), loc: prevLoc(s), desc: '', note: '',
           board: { on: true, x: null, y: null, s: 0.42 } };
     photos.push(p); savePhoto(p);
   }
@@ -398,7 +403,7 @@ async function removeRec(p) {
 // 写真もコメントも入っていない枠は消す
 async function dropIfEmpty(s) {
   const p = bySlot(s);
-  if (p && !p.blob && !(p.desc || '').trim() && !(p.note || '').trim() && (p.loc || '') === prevLoc(s)) await removeRec(p);
+  if (p && !p.blob && !(p.desc || '').trim() && !(p.note || '').trim() && (p.loc || '') === prevLoc(s) && (p.title || '') === prevTitle(s)) await removeRec(p);
 }
 
 /* ================= 画像 ================= */
@@ -429,7 +434,7 @@ async function normalizeImage(file) {
 const BOARD_FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif';
 function boardRows(p) {
   return [
-    ['工事名', cfg.board.koji], ['作業内容', meta.title], ['場所', p.loc],
+    ['工事名', cfg.board.koji], ['作業内容', p.title], ['場所', p.loc],
     ['備考', p.note], ['日付', jpDate(meta.date)], ['施工者', cfg.board.sekou],
   ].filter(r => r[1] && String(r[1]).trim());
 }
@@ -502,6 +507,39 @@ function descLines(p) {
   while (ls.length < DESC_LINES) ls.push('');
   return ls;
 }
+/* ---- 作業名の改行：行の長さがそろうように区切る（画面・PDF・Excelで共通） ---- */
+const charW = ch => /[\x20-\x7e｡-ﾟ]/.test(ch) ? 0.55 : 1;   // 半角は約半分の幅
+const textUnits = t => [...t].reduce((a, c) => a + charW(c), 0);
+const TITLE_CAP = 11, TITLE_CAP_SM = 15;  // 1行に入る文字数（全角）：通常 / 小さい文字
+function splitBalanced(t, n, cap) {
+  const chars = [...t], cum = [0];
+  chars.forEach(c => cum.push(cum[cum.length - 1] + charW(c)));
+  const tot = cum[cum.length - 1], cuts = [];
+  let prev = 0;
+  for (let k = 1; k < n; k++) {
+    const target = tot * k / n; let best = -1, bs = Infinity;
+    for (let i = prev + 1; i < chars.length; i++) {
+      if (cum[i] - cum[prev] > cap) break;
+      let s = Math.abs(cum[i] - target);
+      const pc = chars[i - 1], nc = chars[i];
+      if (/[\s　・、。,）)」』]/.test(pc) || /[\s　（(「『]/.test(nc)) s -= 1.2; // 区切りの良い所を優先
+      if ('、。）)」』ーっゃゅょ'.includes(nc)) s += 3;                       // 行頭に来ないように
+      if (s < bs) { bs = s; best = i; }
+    }
+    if (best < 0) best = Math.min(chars.length, prev + 1);
+    cuts.push(best); prev = best;
+  }
+  const out = []; let s = 0;
+  for (const c of [...cuts, chars.length]) { out.push(chars.slice(s, c).join('').trim()); s = c; }
+  return out.filter(Boolean);
+}
+function titleLayout(t) {
+  t = (t || '').trim(); if (!t) return { text: '', small: false };
+  const u = textUnits(t);
+  if (u <= TITLE_CAP) return { text: t, small: false };
+  if (u <= TITLE_CAP * 2) return { text: splitBalanced(t, 2, TITLE_CAP).join('\n'), small: false };
+  return { text: splitBalanced(t, Math.ceil(u / TITLE_CAP_SM), TITLE_CAP_SM).join('\n'), small: true };
+}
 // 1ページ分（Excelと同じ並び）。screen=true なら画面用（タップ用の案内つき）
 function pageEl(pi, screen, setSrc, first) {
   const page = el('div', 'page' + (first ? ' first' : ''));
@@ -509,6 +547,9 @@ function pageEl(pi, screen, setSrc, first) {
     const sr = el('div', 'site'); sr.appendChild(el('span', 'lb', '現場名'));
     const v = el('span', '', meta.site || '');
     if (screen && !meta.site) { v.textContent = '（タップして入力）'; v.className = 'faint'; }
+    // 長い現場名は、1行に収まるまで文字を小さくする（幅約160mm、標準4.6mm）
+    const su = textUnits(meta.site || '');
+    if (su * 4.6 > 158) v.style.fontSize = `calc(var(--u) * ${(158 / su).toFixed(2)})`;
     sr.appendChild(v);
     if (screen) { sr.classList.add('tap'); sr.dataset.kind = 'site'; }
     page.appendChild(sr);
@@ -518,10 +559,11 @@ function pageEl(pi, screen, setSrc, first) {
     const blk = el('div', 'blk'), ph = el('div', 'ph'), tx = el('div', 'tx');
     if (p && p.blob) { const im = el('img'); im.alt = ''; ph.appendChild(im); setSrc(p, im); }
     else if (screen) ph.appendChild(el('span', 'ph-hint', '📷\nタップして撮影'));
-    const cells = p ? [meta.title, jpDate(meta.date), p.loc || '', ...descLines(p)] : Array(DESC_LINES + 3).fill('');
-    cells.forEach((t, i) => tx.appendChild(el('div', i === 0 ? 't1' : i === 1 ? 't2' : '', t)));
+    const tl = titleLayout(p ? p.title : '');
+    const cells = p ? [tl.text, jpDate(meta.date), p.loc || '', ...descLines(p)] : Array(DESC_LINES + 3).fill('');
+    cells.forEach((t, i) => tx.appendChild(el('div', i === 0 ? 't1' + (tl.small ? ' sm' : '') : i === 1 ? 't2' : '', t)));
     if (screen) {
-      if (p && !meta.title) { const t1 = tx.firstChild; t1.textContent = '（作業名）'; t1.classList.add('faint'); }
+      if (p && !p.title) { const t1 = tx.firstChild; t1.textContent = '（作業名）'; t1.classList.add('faint'); }
       if (!p) tx.appendChild(el('span', 'tx-hint', '✎ タップして\nコメント入力'));
       ph.classList.add('tap'); tx.classList.add('tap'); ph.dataset.slot = tx.dataset.slot = s;
       ph.dataset.kind = 'photo'; tx.dataset.kind = 'text';
@@ -656,10 +698,11 @@ function openCmt(s) {
   cs = s; const p = bySlot(s);
   $('#cHead').textContent = slotLabel(s);
   $('#cPrev').disabled = s === 0;
+  $('#cWork').value = p ? p.title || '' : prevTitle(s);
   $('#cLoc').value = p ? p.loc || '' : prevLoc(s);
   $('#cDesc').value = p ? p.desc || '' : '';
   $('#cNote').value = p ? p.note || '' : '';
-  $('#cSite').value = meta.site || ''; $('#cTitle').value = meta.title || ''; $('#cDate').value = meta.date || '';
+  $('#cSite').value = meta.site || ''; $('#cDate').value = meta.date || '';
   const im = $('#cImg'); im.removeAttribute('src'); im.style.display = 'none';
   if (p && p.blob) thumbOf(p).then(u => { if (cs === s) { im.src = u; im.style.display = ''; } });
   $('#cmt').hidden = false;
@@ -669,7 +712,7 @@ async function closeCmt(next) {
   if (next != null && next >= 0) openCmt(next);
   else { $('#cmt').hidden = true; cs = null; scrollToSlot(s); }
 }
-[['#cLoc', 'loc', true], ['#cDesc', 'desc', false], ['#cNote', 'note', true]].forEach(([sel, key, onBoard]) => {
+[['#cWork', 'title', true], ['#cLoc', 'loc', true], ['#cDesc', 'desc', false], ['#cNote', 'note', true]].forEach(([sel, key, onBoard]) => {
   $(sel).addEventListener('input', e => {
     const p = ensureRec(cs); p[key] = e.target.value; savePhoto(p);
     if (onBoard) dropThumb(p);
@@ -808,8 +851,9 @@ async function buildXlsx() {
     line: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
     last: st.xf({ font: 12, h: 'center', shrink: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
     hidden: st.xf({ numFmt: 177 }),
-    site: st.xf({ font: 14, h: 'left', border: { b: 'thin' } }),
-    siteLine: st.xf({ border: { b: 'thin' } }),
+    // 現場名は B〜F 列を結合し、長いときは文字を縮小（はみ出し表示はiPhoneで切れるため）
+    site: st.xf({ font: 14, h: 'left', shrink: true, border: { b: 'thin' } }),
+    titleSm: st.xf({ font: 12, h: 'center', wrap: true, border: { l: 'thin', r: 'thin', t: 'thin', b: 'thin' } }),
   };
   // 写真の枠：セル結合をせず、外周のセルそれぞれに実線を引く
   // （結合セルや点線だと、iPhoneのプレビューでは枠が消えることがあるため）
@@ -842,9 +886,9 @@ async function buildXlsx() {
       else x = `<c r="${ref}" s="${s}" t="s"><v>${sIdx(v)}</v></c>`;
       rows.get(r).push(x);
     };
-    if (first) { // 現場名（セル結合はせず、文字は右の空きセルへはみ出して表示される）
+    if (first) { // 現場名（B1:F1 を結合）
       put(1, 2, S.site, `現場名：　${meta.site || ''}`);
-      for (let c = 3; c <= 6; c++) put(1, c, S.siteLine, null);
+      for (let c = 3; c <= 6; c++) put(1, c, S.site, null);
     }
     const anchors = [], drawRels = [];
     for (let b = 0; b < PER_PAGE; b++) {
@@ -852,7 +896,7 @@ async function buildXlsx() {
       const lines = p ? [p.loc || '', ...descLines(p)] : Array(DESC_LINES + 1).fill('');
       for (let r = top; r <= top + 9; r++) {
         for (let c = 2; c <= 4; c++) put(r, c, frameXf(r, c, top), null);
-        if (r === top) put(r, 6, S.title, p ? meta.title : null);
+        if (r === top) { const tl = titleLayout(p ? p.title : ''); put(r, 6, tl.small ? S.titleSm : S.title, p ? tl.text : null); }
         else if (r === top + 1) put(r, 6, S.date, p && meta.date ? dateSerial : null);
         else put(r, 6, r === top + 9 ? S.last : S.line, lines[r - top - 2]);
       }
@@ -888,6 +932,7 @@ async function buildXlsx() {
       '<sheetFormatPr defaultRowHeight="13.5"/>' +
       `<cols>${COLS.map(([c, w]) => `<col min="${c}" max="${c}" width="${w}" customWidth="1"/>`).join('')}</cols>` +
       `<sheetData>${rowsXml}</sheetData>` +
+      (first ? '<mergeCells count="1"><mergeCell ref="B1:F1"/></mergeCells>' : '') +
       '<pageMargins left="0.787" right="0.394" top="0.394" bottom="0.394" header="0.512" footer="0.512"/>' +
       '<pageSetup paperSize="9" scale="75" fitToWidth="1" fitToHeight="1" orientation="portrait"/>' +
       (anchors.length ? '<drawing r:id="rId1"/>' : '') + '</worksheet>' });
@@ -1007,7 +1052,7 @@ function applyBoardVisibility() {
 }
 function bindMeta() {
   // 作業名・日付はメニューとコメント入力の両方にある
-  [['#mSite', 'site'], ['#cSite', 'site'], ['#mTitle', 'title'], ['#cTitle', 'title'], ['#mDate', 'date'], ['#cDate', 'date']].forEach(([sel, key]) => {
+  [['#mSite', 'site'], ['#cSite', 'site'], ['#mTitle', 'title'], ['#mDate', 'date'], ['#cDate', 'date']].forEach(([sel, key]) => {
     $(sel).addEventListener('input', e => { meta[key] = e.target.value; saveMeta(); refreshAll(); });
   });
   [['#bKoji', 'koji'], ['#bSekou', 'sekou']].forEach(([sel, key]) => {
@@ -1048,7 +1093,12 @@ async function openReport(id) {
   const r = reports.find(x => x.id === id); if (!r) return;
   clearReportState(); meta = r;
   busy(true, '開いています…');
-  try { photos = (await dbByRid(id)).sort((a, b) => a.order - b.order); }
+  try {
+    photos = (await dbByRid(id)).sort((a, b) => a.order - b.order);
+    // 以前の版（作業名が全ページ共通）の枠には、報告書の作業名を入れて引き継ぐ
+    const old = photos.filter(p => p.title == null);
+    if (old.length) { old.forEach(p => { p.title = r.title || ''; }); await dbPutMany(old); }
+  }
   catch (e) { toast('保存データを読めませんでした: ' + e.message); }
   finally { busy(false); }
   showView('report'); fitPages(); renderPages();
@@ -1070,8 +1120,8 @@ async function duplicateReport(id) {
   if (meta && meta.id === id) await flushSaves();
   const recs = await dbByRid(id);
   const r = newReport({ site: src.site || '', title: src.title, defLoc: src.defLoc });
-  const copies = recs.filter(p => p.loc || p.desc || p.note).map(p => ({
-    id: uid(), rid: r.id, order: p.order, blob: null, w: 0, h: 0, rot: 0,
+  const copies = recs.filter(p => p.title || p.loc || p.desc || p.note).map(p => ({
+    id: uid(), rid: r.id, order: p.order, blob: null, w: 0, h: 0, rot: 0, title: p.title == null ? src.title || '' : p.title,
     loc: p.loc || '', desc: p.desc || '', note: p.note || '', board: { on: true, x: null, y: null, s: p.board ? p.board.s : 0.42 } }));
   await dbPutMany(copies);
   reports.push(r); saveReports();

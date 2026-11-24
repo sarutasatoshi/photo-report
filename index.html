@@ -105,7 +105,9 @@
   .tx .faint { color:#a0a8b0; }
   /* 1ページ目の一番上の現場名 */
   .page.first { height:calc(var(--u) * 285); }
-  .site { flex:none; height:calc(var(--u) * 6); display:flex; align-items:flex-end; gap:calc(var(--u) * 3); padding:0 calc(var(--u) * 1) calc(var(--u) * 0.8);
+  /* 行の高さを固定（iPhoneのヒラギノは標準の行間が広く、文字の上が欠けていた） */
+  .site { flex:none; height:calc(var(--u) * 6); display:flex; align-items:flex-end; gap:calc(var(--u) * 3); padding:0 calc(var(--u) * 1) calc(var(--u) * 0.5);
+          line-height:1.05;
           border-bottom:max(0.5px, calc(var(--u) * 0.35)) solid #555; white-space:nowrap; overflow:hidden; color:#000;
           font-family:"Hiragino Kaku Gothic ProN","MS PGothic","Yu Gothic",sans-serif; font-size:calc(var(--u) * 4.6); }
   .site .lb { font-size:calc(var(--u) * 3.6); color:#333; }
@@ -631,6 +633,30 @@ async function swapSlots(a, b) {
   if (pb) { pb.order = a; savePhoto(pb); }
   renderPages(); scrollToSlot(b);
 }
+// s 番目から後ろの枠を d（+1 / -1）ずつずらす
+async function shiftFrom(s, d) {
+  await flushSaves();
+  const ps = photos.filter(p => p.order >= s);
+  ps.forEach(p => { p.order += d; });
+  if (ps.length) await dbPutMany(ps);
+  meta.updated = Date.now(); summarizeLater();
+}
+// s 番目に空の枠を1つ入れる（s から後ろは1つずつ後ろへ）
+async function insertSlot(s) {
+  await shiftFrom(s, 1);
+  renderPages(); setTimeout(() => scrollToSlot(s), 100);
+  toast(`${slotLabel(s)}に空の枠を入れました`);
+}
+// s 番目の枠を消して、後ろを1つずつ前に詰める
+async function deleteSlot(s) {
+  const p = bySlot(s);
+  if (p && (p.blob || (p.desc || '').trim() || (p.note || '').trim()) &&
+      !confirm(`${slotLabel(s)}の枠を削除して、後ろの写真を1つずつ前に詰めますか？\nこの枠の写真とコメントは消え、元に戻せません。`)) return;
+  if (p) await removeRec(p);
+  await shiftFrom(s + 1, -1);
+  renderPages(); setTimeout(() => scrollToSlot(s), 100);
+  toast('削除して詰めました');
+}
 // ボタンが並ぶ小さなメニュー（写真の枠・一覧の「⋯」で共通）
 function actionSheet(title, build) {
   $('#smTitle').textContent = title;
@@ -656,7 +682,13 @@ function openSlotMenu(s) {
     if (s > 0) add('↑ 1つ前の枠と入れ替え', '', () => swapSlots(s, s - 1));
     add('↓ 1つ後の枠と入れ替え', '', () => swapSlots(s, s + 1));
   }
-  if (p) add('🗑 この枠を空にする', '写真とコメントを消します', async () => {
+  const later = photos.some(x => x.order > s);
+  if (p || later) {
+    add('＋ この枠の前に空の枠を挿入', 'この枠から後ろが1つずつ後ろにずれます', () => insertSlot(s));
+    add('＋ この枠の後に空の枠を挿入', 'すぐ後ろに空の枠が入ります', () => insertSlot(s + 1));
+  }
+  if (p || later) add('➖ この枠を削除して詰める', '後ろの写真が1つずつ前に詰まります', () => deleteSlot(s), 'danger');
+  if (p) add('🗑 この枠を空にする', '写真とコメントを消します（枠は残ります）', async () => {
     if (!confirm(`${slotLabel(s)}の写真とコメントを消しますか？`)) return;
     await removeRec(p); renderPages();
   }, 'danger');

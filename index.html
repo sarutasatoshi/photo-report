@@ -323,19 +323,21 @@ function db() {
   });
   return dbp;
 }
-async function tx(mode, fn) {
+async function tx(mode, fn, now) {
   const d = await db();
   return new Promise((res, rej) => {
     const t = d.transaction('photos', mode); const req = fn(t.objectStore('photos')); let out;
     if (req) req.onsuccess = () => { out = req.result; };
+    // すぐに書き込みを確定させる（アプリを閉じられても保存が残るように）
+    if (now && t.commit) try { t.commit(); } catch (e) {}
     t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   });
 }
 const dbAll = () => tx('readonly', s => s.getAll());
-const dbPut = p => tx('readwrite', s => s.put(p));
-const dbDel = id => tx('readwrite', s => s.delete(id));
+const dbPut = p => tx('readwrite', s => s.put(p), true);
+const dbDel = id => tx('readwrite', s => s.delete(id), true);
 const dbByRid = rid => tx('readonly', s => s.index('rid').getAll(rid));
-const dbPutMany = list => tx('readwrite', s => { list.forEach(p => s.put(p)); });
+const dbPutMany = list => tx('readwrite', s => { list.forEach(p => s.put(p)); }, true);
 const dbDelRid = rid => tx('readwrite', s => {
   const req = s.index('rid').openKeyCursor(IDBKeyRange.only(rid));
   req.onsuccess = () => { const c = req.result; if (c) { s.delete(c.primaryKey); c.continue(); } };
@@ -355,6 +357,22 @@ async function flushSaves() {
   const ps = photos.filter(p => saveLater.has(p.id));
   ps.forEach(p => clearTimeout(saveLater.get(p.id))); saveLater.clear();
   if (ps.length) await dbPutMany(ps);
+}
+/* ---- アプリを閉じる・他のアプリに切り替える前に、すぐ保存する ---- */
+function saveNow() {
+  flushSaves().catch(() => {});
+  if (meta) { saveReports(); summarize().catch(() => {}); }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
+window.addEventListener('pagehide', saveNow);
+window.addEventListener('blur', saveNow);
+// 次に開いたとき、作業していた報告書（とコメント入力中の枠）に戻れるように覚えておく
+const RESUME_KEY = 'photoReport.resume.v1';
+function setResume() {
+  try {
+    if (meta) localStorage.setItem(RESUME_KEY, JSON.stringify({ id: meta.id, cmt: cs }));
+    else localStorage.removeItem(RESUME_KEY);
+  } catch (e) {}
 }
 // 一覧に表示する情報（写真の枚数・検索用の文字・小さい写真）をまとめる
 async function summarize() {
@@ -605,7 +623,7 @@ $('#pages').addEventListener('click', e => {
 
 /* ================= 写真の追加・入れ替え ================= */
 let pending = { slot: null, replace: false };
-function pick(sel, s, replace) { pending = { slot: s, replace }; $(sel).click(); }
+function pick(sel, s, replace) { pending = { slot: s, replace }; saveNow(); $(sel).click(); }
 // start の枠から順に、写真の入っていない枠へ入れていく（replace なら最初の1枚は start を差し替え）
 async function addFiles(files, start = nextFreeSlot(), replace = false) {
   let s = start, first = true, lastS = null;
@@ -737,12 +755,12 @@ function openCmt(s) {
   $('#cSite').value = meta.site || ''; $('#cDate').value = meta.date || '';
   const im = $('#cImg'); im.removeAttribute('src'); im.style.display = 'none';
   if (p && p.blob) thumbOf(p).then(u => { if (cs === s) { im.src = u; im.style.display = ''; } });
-  $('#cmt').hidden = false;
+  $('#cmt').hidden = false; setResume();
 }
 async function closeCmt(next) {
   const s = cs; await dropIfEmpty(s); renderPages();
   if (next != null && next >= 0) openCmt(next);
-  else { $('#cmt').hidden = true; cs = null; scrollToSlot(s); }
+  else { $('#cmt').hidden = true; cs = null; setResume(); scrollToSlot(s); }
 }
 [['#cWork', 'title', true], ['#cLoc', 'loc', true], ['#cDesc', 'desc', false], ['#cNote', 'note', true]].forEach(([sel, key, onBoard]) => {
   $(sel).addEventListener('input', e => {
@@ -793,10 +811,10 @@ $('#edCanvas').addEventListener('pointerdown', e => {
   e.target.setPointerCapture(e.pointerId); setBoardPos(pt, drag.dx, drag.dy);
 });
 $('#edCanvas').addEventListener('pointermove', e => { if (drag) setBoardPos(canvasPt(e), drag.dx, drag.dy); });
-['pointerup', 'pointercancel'].forEach(t => $('#edCanvas').addEventListener(t, () => { drag = null; }));
-$('#edOn').addEventListener('change', e => { edP.board.on = e.target.checked; drawEditor(); });
-$('#edSize').addEventListener('input', e => { edP.board.s = +e.target.value; drawEditor(); });
-$('#edReset').addEventListener('click', () => { edP.board.x = edP.board.y = null; drawEditor(); });
+['pointerup', 'pointercancel'].forEach(t => $('#edCanvas').addEventListener(t, () => { if (drag) savePhoto(edP); drag = null; }));
+$('#edOn').addEventListener('change', e => { edP.board.on = e.target.checked; drawEditor(); savePhoto(edP); });
+$('#edSize').addEventListener('input', e => { edP.board.s = +e.target.value; drawEditor(); savePhoto(edP); });
+$('#edReset').addEventListener('click', () => { edP.board.x = edP.board.y = null; drawEditor(); savePhoto(edP); });
 $('#edClose').addEventListener('click', () => { $('#editor').hidden = true; savePhoto(edP); dropThumb(edP); edP = null; renderPages(); });
 
 /* ================= Excel出力 ================= */
@@ -1133,7 +1151,7 @@ async function openReport(id) {
   }
   catch (e) { toast('保存データを読めませんでした: ' + e.message); }
   finally { busy(false); }
-  showView('report'); fitPages(); renderPages();
+  showView('report'); fitPages(); renderPages(); setResume();
 }
 async function goHome() {
   if (meta) {
@@ -1141,7 +1159,7 @@ async function goHome() {
     // 何も入れずに戻ったときは一覧に残さない
     if (!photos.length && !(meta.title || '').trim() && !(meta.site || '').trim()) { reports = reports.filter(x => x !== meta); saveReports(); }
   }
-  clearReportState(); showView('home'); renderList();
+  clearReportState(); setResume(); showView('home'); renderList();
 }
 async function createReport() {
   const r = newReport(); reports.push(r); saveReports();
@@ -1234,6 +1252,12 @@ async function migrate() {
   window.addEventListener('resize', debounce(() => { if (meta) { fitPages(); } }, 100));
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   showView('home'); renderList();
+  // 前回、報告書を開いたまま閉じた場合は、その続きから始める
+  let rs = null; try { rs = JSON.parse(localStorage.getItem(RESUME_KEY)); } catch (e) {}
+  if (rs && reports.some(r => r.id === rs.id)) {
+    await openReport(rs.id);
+    if (rs.cmt != null && meta) openCmt(rs.cmt);
+  }
 })();
 </script>
 </body>

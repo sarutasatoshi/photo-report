@@ -313,35 +313,62 @@ function saveMeta() { if (!meta) return; meta.updated = Date.now(); saveReports(
 let dbp;
 function db() {
   if (!dbp) dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('photoReport', 2);
+    const r = indexedDB.open('photoReport', 3);
     r.onupgradeneeded = () => {
       const d = r.result;
       const s = d.objectStoreNames.contains('photos') ? r.transaction.objectStore('photos') : d.createObjectStore('photos', { keyPath: 'id' });
       if (!s.indexNames.contains('rid')) s.createIndex('rid', 'rid'); // rid = どの報告書の写真か
+      // 写真の画像データは別の入れ物に分けて保存する（コメントの保存は文字だけになり、軽く確実になる）
+      if (!d.objectStoreNames.contains('imgs')) d.createObjectStore('imgs', { keyPath: 'id' });
     };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   });
   return dbp;
 }
-async function tx(mode, fn, now) {
+async function tx(mode, fn, now, stores = 'photos') {
   const d = await db();
   return new Promise((res, rej) => {
-    const t = d.transaction('photos', mode); const req = fn(t.objectStore('photos')); let out;
+    const t = d.transaction(stores, mode);
+    const arg = Array.isArray(stores) ? Object.fromEntries(stores.map(n => [n, t.objectStore(n)])) : t.objectStore(stores);
+    const req = fn(arg); let out;
     if (req) req.onsuccess = () => { out = req.result; };
     // すぐに書き込みを確定させる（アプリを閉じられても保存が残るように）
     if (now && t.commit) try { t.commit(); } catch (e) {}
     t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   });
 }
+/* iPhoneでは、保存済みの写真データ(Blob)をもう一度保存しようとすると失敗することがある。
+   そのため写真は imgs に1回だけ（ArrayBufferで）保存し、枠の記録(photos)には文字だけを保存する */
+const rec = p => { if (!p.img) return p; const o = Object.assign({}, p); delete o.blob; return o; };
 const dbAll = () => tx('readonly', s => s.getAll());
-const dbPut = p => tx('readwrite', s => s.put(p), true);
-const dbDel = id => tx('readwrite', s => s.delete(id), true);
+const dbPut = p => tx('readwrite', s => s.put(rec(p)), true);
+const dbDel = id => tx('readwrite', s => { s.photos.delete(id); s.imgs.delete(id); }, true, ['photos', 'imgs']);
 const dbByRid = rid => tx('readonly', s => s.index('rid').getAll(rid));
-const dbPutMany = list => tx('readwrite', s => { list.forEach(p => s.put(p)); }, true);
+const dbPutMany = list => tx('readwrite', s => { list.forEach(p => s.put(rec(p))); }, true);
 const dbDelRid = rid => tx('readwrite', s => {
-  const req = s.index('rid').openKeyCursor(IDBKeyRange.only(rid));
-  req.onsuccess = () => { const c = req.result; if (c) { s.delete(c.primaryKey); c.continue(); } };
-});
+  const req = s.photos.index('rid').openKeyCursor(IDBKeyRange.only(rid));
+  req.onsuccess = () => { const c = req.result; if (c) { s.photos.delete(c.primaryKey); s.imgs.delete(c.primaryKey); c.continue(); } };
+}, false, ['photos', 'imgs']);
+async function putImg(p) {
+  const buf = await p.blob.arrayBuffer();
+  await tx('readwrite', s => s.put({ id: p.id, buf, type: p.blob.type || 'image/jpeg' }), true, 'imgs');
+  p.img = true;
+}
+// 報告書の枠を読み込む（写真も付ける）。古い形式（枠の記録に写真が入っている）は、ここで移し替える
+async function loadRecs(rid) {
+  const ps = await dbByRid(rid);
+  for (const p of ps) {
+    if (p.img) {
+      try {
+        const r = await tx('readonly', s => s.get(p.id), false, 'imgs');
+        if (r) p.blob = new Blob([r.buf], { type: r.type }); else { p.img = false; p.blob = null; }
+      } catch (e) { p.blob = null; }
+    } else if (p.blob) {
+      try { await putImg(p); await dbPut(p); } catch (e) {}
+    }
+  }
+  return ps;
+}
 
 /* 1件 = 報告書の1枠（写真＋コメント）。rid が報告書、order が枠の番号（0=1ページ目の上, 1=中, 2=下, 3=2ページ目の上…）。
    空いた枠もそのまま残るので、画面で見た並びのまま出力される */
@@ -363,6 +390,8 @@ function saveNow() {
   flushSaves().catch(() => {});
   if (meta) { saveReports(); summarize().catch(() => {}); }
 }
+// 保存などで思わぬ失敗があったときは画面に出す（黙って消えないように）
+window.addEventListener('unhandledrejection', e => toast('うまく処理できませんでした: ' + ((e.reason && e.reason.message) || e.reason), 5000));
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
 window.addEventListener('pagehide', saveNow);
 window.addEventListener('blur', saveNow);
@@ -635,7 +664,9 @@ async function addFiles(files, start = nextFreeSlot(), replace = false) {
       Object.assign(p, { blob, w, h, rot: 0, v: uid() }); p.board.x = p.board.y = null;
       meta.updated = Date.now(); summarizeLater();
       imgCache.delete(p.id); dropThumb(p);
-      clearTimeout(saveLater.get(p.id)); await dbPut(p);
+      clearTimeout(saveLater.get(p.id)); p.img = false;
+      try { await putImg(p); } catch (e) {} // 分けて保存できないときは、枠の記録に写真ごと保存する
+      await dbPut(p);
       lastS = s; s++; first = false;
     } catch (e) { toast('写真を読み込めませんでした: ' + e.message); }
   }
@@ -1144,7 +1175,7 @@ async function openReport(id) {
   clearReportState(); meta = r;
   busy(true, '開いています…');
   try {
-    photos = (await dbByRid(id)).sort((a, b) => a.order - b.order);
+    photos = (await loadRecs(id)).sort((a, b) => a.order - b.order);
     // 以前の版（作業名が全ページ共通）の枠には、報告書の作業名を入れて引き継ぐ
     const old = photos.filter(p => p.title == null);
     if (old.length) { old.forEach(p => { p.title = r.title || ''; }); await dbPutMany(old); }

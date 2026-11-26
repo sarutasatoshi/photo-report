@@ -7,6 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="写真報告書">
 <meta name="theme-color" content="#1f3b4d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>写真報告書</title>
 <style>
   :root { --main:#1f3b4d; --accent:#2f7d5b; --bg:#e9edf0; --line:#d5dbe1; --text:#1d2329; }
@@ -272,6 +275,16 @@
 'use strict';
 /* ================= 基本 ================= */
 const $ = s => document.querySelector(s);
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+// Android は「写真アプリ」の代わりに「ダウンロード」フォルダへ保存するので、案内の文言を変える
+if (IS_ANDROID) {
+  $('#saBtn').textContent = '📥 携帯に保存';
+  $('#saveAsk p').innerHTML = '報告書には貼り付けました。「携帯に保存」を押すと、黒板なしの元の写真が<b>「ダウンロード」フォルダ</b>に保存されます（フォト・ギャラリーのアプリでも見られます）。';
+  $('#sSave').parentElement.lastChild.textContent = ' 撮影した写真を携帯（ダウンロード）にも保存する';
+  $('#sSave').closest('section').querySelector('.note-s').textContent = 'オンにすると、撮影のあとに「携帯に保存」が出ます。押すと黒板なしの元の写真が「ダウンロード」フォルダに保存されます。';
+}
+// 電波がない所でも開けるように、アプリの控えを端末に残す（ネットにつながったときに最新に入れ替わる）
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 const pad2 = n => String(n).padStart(2, '0');
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const jpDate = s => { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return `${y}年${m}月${d}日`; };
@@ -766,6 +779,8 @@ $('#saBtn').addEventListener('click', async () => {
   const type = f.type || 'image/jpeg';
   const ext = type === 'image/png' ? 'png' : type === 'image/heic' ? 'heic' : 'jpg';
   const file = new File([f], `現場写真_${stamp()}.${ext}`, { type });
+  // Android は「ダウンロード」フォルダに保存（フォト・ギャラリーのアプリにも出る）
+  if (IS_ANDROID) { download(file); toast('「ダウンロード」フォルダに保存しました'); return; }
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file] }); }
     catch (e) { if (e.name !== 'AbortError') toast('保存できませんでした: ' + e.message); }
@@ -1120,7 +1135,9 @@ $('#outPdf').addEventListener('click', async () => {
   $('#menu').hidden = true; busy(true, 'PDF用の画面を準備中…');
   try {
     await buildPrint(); busy(false);
-    showReady('PDFの準備ができました', '「印刷」を押し、印刷画面の共有ボタン（iPhone/iPad）または「PDFに保存」（パソコン）で保存してください。',
+    showReady('PDFの準備ができました', IS_ANDROID
+      ? '「印刷 / PDF保存」を押し、印刷画面の上のプリンター選びで「PDF形式で保存」を選んで、PDFのボタンを押してください。'
+      : '「印刷」を押し、印刷画面の共有ボタン（iPhone/iPad）または「PDFに保存」（パソコン）で保存してください。',
       '印刷 / PDF保存', () => { $('#ready').hidden = true; markExported(); window.print(); }, null);
   } catch (e) { busy(false); alert('PDFの準備に失敗しました。\n' + e.message); }
 });

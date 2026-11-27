@@ -176,10 +176,11 @@
       <button class="btn" id="cNext">次 ▶</button>
     </div>
     <div class="cthumb"><img id="cImg" alt=""></div>
-    <label>作業名<span style="color:#7a858f">… この枠だけに入ります</span><input type="text" id="cWork" placeholder="例：差圧計交換作業"></label>
+    <label>作業名（右上の欄）<span style="color:#7a858f">… 工事全体の名前。最初に入れると全部の写真に入ります</span><input type="text" id="cWork" placeholder="例：○○棟 送風機更新工事"></label>
     <label>場所<input type="text" id="cLoc" placeholder="例：408室スクラバー"></label>
     <label>作業内容（1行ずつ改行・7行まで）<textarea id="cDesc" rows="7" placeholder="例：古いチューブの取外し&#10;※差圧計のH側、L側で各1本"></textarea></label>
     <div class="noteWrap">
+      <label>黒板の作業内容<span style="color:#7a858f">… この写真で何をしている所か（右上の作業名とは別）</span><input type="text" id="cBWork" placeholder="例：既設送風機の撤去"></label>
       <label>黒板の備考<input type="text" id="cNote" placeholder="例：施工前"></label>
       <div class="chips" id="cChips"><button>施工前</button><button>施工中</button><button>施工後</button><button data-clear>クリア</button></div>
     </div>
@@ -214,7 +215,7 @@
         <label>工事名<input type="text" id="bKoji" placeholder="例：○○ビル 空調設備保守"></label>
         <label>施工者<input type="text" id="bSekou" placeholder="例：○○設備(株)"></label>
       </div>
-      <p class="note-s">黒板には「工事名・作業内容（作業名）・場所・備考・日付・施工者」のうち、入力した項目だけが表示されます。位置と大きさは、写真の枠をタップ →「黒板の位置・大きさ」で調整できます。</p>
+      <p class="note-s">黒板には「工事名・作業内容・場所・備考・日付・施工者」のうち、入力した項目だけが表示されます。作業内容と備考は写真ごとに、写真の右側をタップして入れます（右上の作業名とは別です）。位置と大きさは、写真の枠をタップ →「黒板の位置・大きさ」で調整できます。</p>
     </section>
     <section>
       <h2>撮影した写真の保存</h2>
@@ -421,7 +422,7 @@ async function summarize() {
   const r = meta; if (!r) return;
   const ps = photos.slice().sort((a, b) => a.order - b.order);
   r.count = ps.filter(p => p.blob).length; r.pages = outPageIdx().length;
-  r.text = ps.map(p => [p.title, p.loc, p.desc, p.note].filter(Boolean).join(' ')).join(' ').slice(0, 3000);
+  r.text = ps.map(p => [p.title, p.work, p.loc, p.desc, p.note].filter(Boolean).join(' ')).join(' ').slice(0, 3000);
   const f = ps.find(p => p.blob), key = f ? `${f.id}:${f.v || ''}:${f.rot || 0}` : '';
   if (key !== r.thumbKey) {
     r.thumbKey = key; r.thumb = '';
@@ -437,6 +438,12 @@ const usedPages = () => lastSlot() < 0 ? 0 : Math.floor(lastSlot() / PER_PAGE) +
 const nextFreeSlot = () => photos.reduce((m, p) => p.blob ? Math.max(m, p.order) : m, -1) + 1;
 // 出力するページ（中身が1つもないページは飛ばす）
 const outPageIdx = () => { const r = []; for (let pi = 0; pi < usedPages(); pi++) if ([0, 1, 2].some(b => bySlot(pi * PER_PAGE + b))) r.push(pi); return r; };
+// 黒板の作業内容（写真ごと）。新しい枠には前の枠の内容を最初に入れておく（書き換えてもほかの枠は変わらない）
+function prevWork(s) {
+  let best = null;
+  for (const p of photos) if (p.order < s && p.work && (!best || p.order > best.order)) best = p;
+  return best ? best.work : '';
+}
 function prevLoc(s) {
   let best = null;
   for (const p of photos) if (p.order < s && p.loc && (!best || p.order > best.order)) best = p;
@@ -451,7 +458,7 @@ function prevTitle(s) {
 function ensureRec(s) {
   let p = bySlot(s);
   if (!p) {
-    p = { id: uid(), rid: meta.id, order: s, blob: null, w: 0, h: 0, rot: 0, title: prevTitle(s), loc: prevLoc(s), desc: '', note: '',
+    p = { id: uid(), rid: meta.id, order: s, blob: null, w: 0, h: 0, rot: 0, title: prevTitle(s), work: prevWork(s), loc: prevLoc(s), desc: '', note: '',
           board: { on: true, x: null, y: null, s: 0.42 } };
     photos.push(p); savePhoto(p);
   }
@@ -465,7 +472,7 @@ async function removeRec(p) {
 // 写真もコメントも入っていない枠は消す
 async function dropIfEmpty(s) {
   const p = bySlot(s);
-  if (p && !p.blob && !(p.desc || '').trim() && !(p.note || '').trim() && (p.loc || '') === prevLoc(s) && (p.title || '') === prevTitle(s)) await removeRec(p);
+  if (p && !p.blob && !(p.desc || '').trim() && !(p.note || '').trim() && (p.loc || '') === prevLoc(s) && (p.title || '') === prevTitle(s) && (p.work || '') === prevWork(s)) await removeRec(p);
 }
 
 /* ================= 画像 ================= */
@@ -496,7 +503,7 @@ async function normalizeImage(file) {
 const BOARD_FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif';
 function boardRows(p) {
   return [
-    ['工事名', cfg.board.koji], ['作業内容', p.title], ['場所', p.loc],
+    ['工事名', cfg.board.koji], ['作業内容', p.work], ['場所', p.loc],
     ['備考', p.note], ['日付', jpDate(meta.date)], ['施工者', cfg.board.sekou],
   ].filter(r => r[1] && String(r[1]).trim());
 }
@@ -796,6 +803,7 @@ function openCmt(s) {
   $('#cPrev').disabled = s === 0;
   $('#cWork').value = p ? p.title || '' : prevTitle(s);
   $('#cLoc').value = p ? p.loc || '' : prevLoc(s);
+  $('#cBWork').value = p ? p.work || '' : prevWork(s);
   $('#cDesc').value = p ? p.desc || '' : '';
   $('#cNote').value = p ? p.note || '' : '';
   $('#cSite').value = meta.site || ''; $('#cDate').value = meta.date || '';
@@ -823,7 +831,7 @@ $('#cWork').addEventListener('input', e => {
   if (!mt || mt === old) { meta.title = v; $('#mTitle').value = v; saveMeta(); }
   renderLater();
 });
-[['#cWork', 'title', true], ['#cLoc', 'loc', true], ['#cDesc', 'desc', false], ['#cNote', 'note', true]].forEach(([sel, key, onBoard]) => {
+[['#cWork', 'title', false], ['#cBWork', 'work', true], ['#cLoc', 'loc', true], ['#cDesc', 'desc', false], ['#cNote', 'note', true]].forEach(([sel, key, onBoard]) => {
   $(sel).addEventListener('input', e => {
     const p = ensureRec(cs); p[key] = e.target.value; savePhoto(p);
     if (onBoard) dropThumb(p);
@@ -1220,6 +1228,9 @@ async function openReport(id) {
     // 以前の版（作業名が全ページ共通）の枠には、報告書の作業名を入れて引き継ぐ
     const old = photos.filter(p => p.title == null);
     if (old.length) { old.forEach(p => { p.title = r.title || ''; }); await dbPutMany(old); }
+    // 黒板の作業内容が別の欄になる前の枠は、これまで黒板に出ていた作業名をそのまま引き継ぐ（見た目を変えない）
+    const noWork = photos.filter(p => p.work == null);
+    if (noWork.length) { noWork.forEach(p => { p.work = p.title || ''; }); await dbPutMany(noWork); }
   }
   catch (e) { toast('保存データを読めませんでした: ' + e.message); }
   finally { busy(false); }
@@ -1244,7 +1255,7 @@ async function duplicateReport(id) {
   const r = newReport({ site: src.site || '', title: src.title, defLoc: src.defLoc });
   const copies = recs.filter(p => p.title || p.loc || p.desc || p.note).map(p => ({
     id: uid(), rid: r.id, order: p.order, blob: null, w: 0, h: 0, rot: 0, title: p.title == null ? src.title || '' : p.title,
-    loc: p.loc || '', desc: p.desc || '', note: p.note || '', board: { on: true, x: null, y: null, s: p.board ? p.board.s : 0.42 } }));
+    work: p.work == null ? p.title || '' : p.work, loc: p.loc || '', desc: p.desc || '', note: p.note || '', board: { on: true, x: null, y: null, s: p.board ? p.board.s : 0.42 } }));
   await dbPutMany(copies);
   reports.push(r); saveReports();
   if (meta) await goHome();

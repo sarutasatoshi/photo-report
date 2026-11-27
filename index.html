@@ -204,7 +204,7 @@
     <section>
       <h2>報告書の情報</h2>
       <label>現場名（客先名）<span style="color:#7a858f">… 1ページ目の一番上に入ります</span><input type="text" id="mSite" placeholder="例：○○株式会社 △△工場"></label>
-      <label>報告書の作業名<span style="color:#7a858f">… 一覧・ファイル名に使います。写真の枠の作業名は、枠をタップして1つずつ変えられます</span><input type="text" id="mTitle" placeholder="例：差圧計交換作業"></label>
+      <label>報告書の作業名<span style="color:#7a858f">… ここに入れると全部の枠の作業名に入ります（一覧・ファイル名にも使います）。違う作業の枠だけ、枠の右側をタップして変えられます</span><input type="text" id="mTitle" placeholder="例：差圧計交換作業"></label>
       <label>日付<input type="date" id="mDate"></label>
     </section>
     <section>
@@ -1150,6 +1150,15 @@ function applyBoardVisibility() {
 }
 function bindMeta() {
   // 作業名・日付はメニューとコメント入力の両方にある
+  // 報告書の作業名を入れると、まだ作業名を変えていない枠（空、または前の作業名のまま）にも全部入る。
+  // 枠ごとに書き換えた作業名はそのまま残す
+  $('#mTitle').addEventListener('input', e => {
+    const old = (meta.title || '').trim(), v = e.target.value;
+    photos.forEach(p => {
+      const t = (p.title || '').trim();
+      if (!t || t === old) { p.title = v; savePhoto(p); dropThumb(p); }
+    });
+  });
   [['#mSite', 'site'], ['#cSite', 'site'], ['#mTitle', 'title'], ['#mDate', 'date'], ['#cDate', 'date']].forEach(([sel, key]) => {
     $(sel).addEventListener('input', e => { meta[key] = e.target.value; saveMeta(); refreshAll(); });
   });

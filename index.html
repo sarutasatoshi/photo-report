@@ -808,6 +808,21 @@ async function closeCmt(next) {
   if (next != null && next >= 0) openCmt(next);
   else { $('#cmt').hidden = true; cs = null; setResume(); scrollToSlot(s); }
 }
+// 一番最初の作業名（これより前の枠に作業名がない枠）を入れると、ほかの枠（作業名が空か、同じ作業名のまま）と
+// 報告書の作業名にも全部入る。2つ目以降の違う作業名は、その枠だけ
+$('#cWork').addEventListener('input', e => {
+  const s = cs, v = e.target.value, cur = bySlot(s);
+  if (photos.some(p => p.order < s && (p.title || '').trim())) return;
+  const old = ((cur ? cur.title : prevTitle(s)) || '').trim();
+  photos.forEach(p => {
+    if (p.order === s) return;
+    const t = (p.title || '').trim();
+    if (!t || t === old) { p.title = v; savePhoto(p); dropThumb(p); }
+  });
+  const mt = (meta.title || '').trim();
+  if (!mt || mt === old) { meta.title = v; $('#mTitle').value = v; saveMeta(); }
+  renderLater();
+});
 [['#cWork', 'title', true], ['#cLoc', 'loc', true], ['#cDesc', 'desc', false], ['#cNote', 'note', true]].forEach(([sel, key, onBoard]) => {
   $(sel).addEventListener('input', e => {
     const p = ensureRec(cs); p[key] = e.target.value; savePhoto(p);
